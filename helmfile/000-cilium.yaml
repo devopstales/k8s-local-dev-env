@@ -1,0 +1,10 @@
+repositories:
+- name: cilium
+  url: https://helm.cilium.io/
+
+releases:
+- name: cni-cilium
+  namespace: kube-system
+  chart: cilium/cilium
+  values:
+   - 000-cilium-values.yaml

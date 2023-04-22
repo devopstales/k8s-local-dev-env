@@ -1,0 +1,5 @@
+#!/bin/bash
+
+/usr/local/bin/k3s-killall.sh
+/usr/local/bin/k3s-uninstall.sh
+rm -rf /etc/rancher/node

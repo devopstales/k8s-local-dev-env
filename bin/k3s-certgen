@@ -1,0 +1,14 @@
+#!/bin/bash
+
+echo "Creating self-signed CA certificates for TLS and installing them in the local trust stores"
+
+CA_CERTS_FOLDER=$HOME/k8s-local-dev-env/.certs
+
+echo ${CA_CERTS_FOLDER}
+rm -rf ${CA_CERTS_FOLDER}
+mkdir -p ${CA_CERTS_FOLDER}
+
+CAROOT=${CA_CERTS_FOLDER} mkcert -install
+
+echo "Creating K8S secrets with the CA private keys (will be used by the cert-manager CA Issuer)"
+kubectl -n ingress-system create secret tls ca-key-pair --key=${CA_CERTS_FOLDER}/rootCA-key.pem --cert=${CA_CERTS_FOLDER}/rootCA.pem

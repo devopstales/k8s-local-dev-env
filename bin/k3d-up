@@ -1,0 +1,115 @@
+#!/bin/bash
+#
+# Starts a k3s cluster (via k3d) with local image registry
+
+set -o errexit
+
+# desired cluster name (default is "k3s-default")
+CLUSTER_NAME="${1:-k3s-default}"
+REGISTRY_URL="${2:-registry.k3d.intra}"
+
+# test local registry is available
+
+echo "Generating K3D Config"
+
+echo "apiVersion: k3d.io/v1alpha4
+kind: Simple
+metadata:
+  name: $1
+kubeAPI:
+  hostIP: "127.0.0.1"
+  hostPort: '6445'
+subnet: "172.28.0.0/16"
+volumes:
+  - volume: $HOME/k8s-local-dev-env/manifests/:/var/lib/rancher/k3s/server/manifests/custom
+    nodeFilters:
+      - server:*
+ports:
+  - port: 80:80
+    nodeFilters:
+      - loadbalancer
+  - port: 443:443
+    nodeFilters:
+      - loadbalancer
+hostAliases: 
+  - ip: $IP
+    hostnames: 
+      - $REGISTRY_URL
+registries:
+  config: |
+    mirrors:
+      "docker.io":
+        endpoint:
+        -  "http://$REGISTRY_URL:5000"
+options:
+  k3d:
+    disableLoadbalancer: false
+  k3s:
+    extraArgs:
+      - arg: "--disable=traefik"
+        nodeFilters:
+          - server:*
+      - arg: "--disable=servicelb"
+        nodeFilters:
+          - server:*
+      - arg: "--flannel-backend=none"
+        nodeFilters:
+          - server:*
+      - arg: "--disable-network-policy"
+        nodeFilters:
+          - server:*
+      - arg: "--kubelet-arg='node-ip=0.0.0.0'"
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+" > $HOME/k8s-local-dev-env/bin/k3d-config.yaml
+
+
+k3d cluster create --config $HOME/k8s-local-dev-env/bin/k3d-config.yaml
+
+# Install Cert
+k3d-certgen
+
+# TODO: Generate cilium configuration
+
+# Install cilium
+helmfile apply -f $HOME/k8s-local-dev-env/helmfile/000-cilium.yaml 2>/dev/null
+
+# Edit cgroup2
+sleep 10
+docker exec -it k3d-$1-server-0 mount bpffs /sys/fs/bpf -t bpf
+docker exec -it k3d-$1-server-0 mount --make-shared /sys/fs/bpf
+docker exec -it k3d-$1-server-0 mkdir -p /run/cilium/cgroupv2
+docker exec -it k3d-$1-server-0 mount none /run/cilium/cgroupv2 -t cgroup2
+docker exec -it k3d-$1-server-0 mount --make-shared /run/cilium/cgroupv2
+
+# TODO: add option to enable disable
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/standard/gateway.networking.k8s.io_gatewayclasses.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/standard/gateway.networking.k8s.io_gateways.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/standard/gateway.networking.k8s.io_httproutes.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/experimental/gateway.networking.k8s.io_referencegrants.yaml
+kubectl apply -f https://raw.githubusercontent.com/cilium/cilium/1.13.0/examples/kubernetes/gateway/basic-http.yaml
+
+# Annotate nodes with registry info for Tilt to auto-detect
+echo "Waiting for node(s) + annotating with registry info..."
+DONE=""
+timeout=$(($(date +%s) + 30))
+until [[ $(date +%s) -gt $timeout ]]; do
+  nodes=$(kubectl get nodes -o go-template --template='{{range .items}}{{printf "%s\n" .metadata.name}}{{end}}')
+  if [ ! -z $nodes ]; then
+    for node in $nodes; do
+      kubectl annotate node "${node}" \
+              tilt.dev/registry=${REGISTRY_URL}:5000 \
+              tilt.dev/registry-from-cluster=${REGISTRY_URL}:5000
+    done
+    DONE=true
+    break
+  fi
+  sleep 0.2
+done
+
+if [ -z "$DONE" ]; then
+  echo "Timed out waiting for node(s) to be up"
+  exit 1
+fi

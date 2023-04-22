@@ -1,0 +1,175 @@
+#!/bin/bash
+# /etc/systemd/system/k3s.service.env
+# /etc/systemd/system/k3s.service
+
+export MASTER_IP=$(hostname -I | cut -d' ' -f1)
+GATEWAY_API=${$1:false}
+
+echo "Generating K3S Configuration"
+
+sudo rm -rf /etc/rancher/k3s
+sudo mkdir -p /etc/rancher/k3s
+sudo chown $USER:$USER /etc/rancher/k3s
+
+echo "node-ip: ${MASTER_IP}
+node-external-ip: ${MASTER_IP}
+bind-address: ${MASTER_IP}
+" >> /etc/rancher/k3s/config.yaml
+
+# TODO: if cilium
+echo "flannel-backend: none
+disable-network-policy: true
+disable:
+ - traefik
+ - servicelb
+" >> /etc/rancher/k3s/config.yaml
+
+echo "Deploying K3S"
+k3s-get
+
+sudo chown paladm:paladm /etc/rancher/k3s/k3s.yaml
+export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+echo "Copying config to autodeploy directory"
+sudo mkdir -p /var/lib/rancher/k3s/server/manifests/custom
+sudo cp -r $HOME/k8s-local-dev-env/manifests/* /var/lib/rancher/k3s/server/manifests/custom
+
+# Install Cert
+k3d-certgen
+
+# TODO: add option to enable disable
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/standard/gateway.networking.k8s.io_gatewayclasses.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/standard/gateway.networking.k8s.io_gateways.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/standard/gateway.networking.k8s.io_httproutes.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/experimental/gateway.networking.k8s.io_referencegrants.yaml
+kubectl apply -f https://raw.githubusercontent.com/cilium/cilium/1.13.0/examples/kubernetes/gateway/basic-http.yaml
+
+echo "Generating Cilium helm values"
+echo "kubeProxyReplacement: "strict"
+k8sServiceHost: ${MASTER_IP}
+k8sServicePort: 6443
+rollOutCiliumPods: true
+ipv4:
+  enabled: true
+ipv6:
+  enabled: true
+gatewayAPI:
+  enabled: ${GATEWAY_API}
+hubble:
+  metrics:
+    serviceMonitor:
+      enabled: false
+    enabled:
+    - dns:query;ignoreAAAA
+    - drop
+    - tcp
+    - flow
+    - icmp
+    - http
+  ui:
+    enabled: true
+    replicas: 1
+    ingress:
+      enabled: true
+      hosts:
+        - hubble.k3d.intra
+      annotations:
+        kubernetes.io/ingress.class: nginx
+        cert-manager.io/cluster-issuer: ca-issuer
+      tls:
+      - secretName: hubble-ingress-tls
+        hosts:
+        - hubble.k3d.intra
+    backend:
+      resources:
+        limits:
+          cpu: 60m
+          memory: 300Mi
+        requests:
+          cpu: 20m
+          memory: 64Mi
+    frontend:
+      server:
+        ipv6:
+          enabled: false
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1024M
+        requests:
+          cpu: 100m
+          memory: 64Mi
+    proxy:
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1024M
+        requests:
+          cpu: 100m
+          memory: 64Mi
+  relay:
+    enabled: true
+    resources:
+      limits:
+        cpu: 100m
+        memory: 500Mi
+operator:
+  replicas: 1
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: false
+ipam:
+  mode: "cluster-pool"
+  operator:
+    clusterPoolIPv4PodCIDR: "10.43.0.0/16"
+    clusterPoolIPv4MaskSize: 24
+    clusterPoolIPv6PodCIDR: "fd00::/104"
+    clusterPoolIPv6MaskSize: 120
+resources:
+  limits:
+    cpu: 4000m
+    memory: 4Gi
+  requests:
+    cpu: 100m
+    memory: 512Mi
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+" > $HOME/k8s-local-dev-env/helmfile/000-cilium-values.yaml
+
+# TODO: if cilium
+echo "Installing cilium"
+helmfile apply -f $HOME/k8s-local-dev-env/helmfile/000-cilium.yaml 2>/dev/null
+
+# TODO: if tilt
+# Annotate nodes with registry info for Tilt to auto-detect
+#echo "Waiting for node(s) + annotating with registry info..."
+#DONE=""
+#timeout=$(($(date +%s) + 30))
+#until [[ $(date +%s) -gt $timeout ]]; do
+#  nodes=$(kubectl get nodes -o go-template --template='{{range .items}}{{printf "%s\n" .metadata.name}}{{end}}')
+#  if [ ! -z $nodes ]; then
+#    for node in $nodes; do
+#      kubectl annotate node "${node}" \
+#              tilt.dev/registry=localhost:${reg_port} \
+#              tilt.dev/registry-from-cluster=${reg_name}:${reg_port}
+#    done
+#    DONE=true
+#    break
+#  fi
+#  sleep 0.2
+#done
+#
+#if [ -z "$DONE" ]; then
+#  echo "Timed out waiting for node(s) to be up"
+#  exit 1
+#fi
