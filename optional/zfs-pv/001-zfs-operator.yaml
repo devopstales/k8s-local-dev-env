@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: localpv-system
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: zfs-localpv
+  namespace: localpv-system
+spec:
+  repo: "https://openebs.github.io/zfs-localpv"
+  chart: zfs-localpv
+  targetNamespace: localpv-system

@@ -1,0 +1,18 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default-pool
+  namespace: ingress-system
+spec:
+  addresses:
+  - 198.18.0.0/24
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: l2-advertisement
+  namespace: ingress-system
+spec:
+  ipAddressPools:
+  - default-pool
+

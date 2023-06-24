@@ -13,12 +13,11 @@ spec:
     podSecurityPolicy:
       enabled: false
     controller:
-      hostNetwork: true
       kind: DaemonSet
       allowSnippetAnnotations: false
       service:
     #  externalTrafficPolicy: "Local"
-        type: "ClusterIP"
+        type: "LoadBalancer"
       watchIngressWithoutClass: true
       extraArgs:
         ingress-class: "nginx"

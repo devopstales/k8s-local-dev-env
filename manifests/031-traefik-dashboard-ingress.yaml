@@ -21,10 +21,10 @@ metadata:
 spec:
   tls:
   - hosts:
-      - traefik.k3d.intra
+      - traefik.k3s.intra
     secretName: tls-docker-registry-ui-cert
   rules:
-  - host: traefik.k3d.intra
+  - host: traefik.k3s.intra
     http:
       paths:
       - backend:

@@ -3,7 +3,7 @@
 # /etc/systemd/system/k3s.service
 
 export MASTER_IP=$(hostname -I | cut -d' ' -f1)
-GATEWAY_API=${$1:false}
+GATEWAY_API="${1:-false}"
 
 echo "Generating K3S Configuration"
 
@@ -25,24 +25,36 @@ disable:
 " >> /etc/rancher/k3s/config.yaml
 
 echo "Deploying K3S"
-k3s-get
+if ! [ -x "$(command -v k3s)" ]; then
+  k3s-get
+fi
 
-sudo chown paladm:paladm /etc/rancher/k3s/k3s.yaml
+sudo systemctl start k3s
+
+sudo chown $USER:$USER /etc/rancher/k3s/k3s.yaml
 export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+
+echo "Deploy CA Certificate"
+kubectl -n ingress-system create secret generic ca-key-pair \
+  --from-file=tls.crt=$HOME/k8s-local-dev-env/.certs/rootCA.pem \
+  --from-file=tls.key=$HOME/k8s-local-dev-env/.certs/rootCA-key.pem \
+  --dry-run -o yaml > $HOME/k8s-local-dev-env/manifests/ca-cert.yaml
 
 echo "Copying config to autodeploy directory"
 sudo mkdir -p /var/lib/rancher/k3s/server/manifests/custom
 sudo cp -r $HOME/k8s-local-dev-env/manifests/* /var/lib/rancher/k3s/server/manifests/custom
 
 # Install Cert
-k3d-certgen
+k3s-certgen
 
 # TODO: add option to enable disable
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/standard/gateway.networking.k8s.io_gatewayclasses.yaml
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/standard/gateway.networking.k8s.io_gateways.yaml
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/standard/gateway.networking.k8s.io_httproutes.yaml
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/experimental/gateway.networking.k8s.io_referencegrants.yaml
-kubectl apply -f https://raw.githubusercontent.com/cilium/cilium/1.13.0/examples/kubernetes/gateway/basic-http.yaml
+if $GATEWAY_API; then
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/standard/gateway.networking.k8s.io_gatewayclasses.yaml
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/standard/gateway.networking.k8s.io_gateways.yaml
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/standard/gateway.networking.k8s.io_httproutes.yaml
+  kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.5.1/config/crd/experimental/gateway.networking.k8s.io_referencegrants.yaml
+  kubectl apply -f https://raw.githubusercontent.com/cilium/cilium/1.13.0/examples/kubernetes/gateway/basic-http.yaml
+fi
 
 echo "Generating Cilium helm values"
 echo "kubeProxyReplacement: "strict"
@@ -72,14 +84,14 @@ hubble:
     ingress:
       enabled: true
       hosts:
-        - hubble.k3d.intra
+        - hubble.k3s.intra
       annotations:
         kubernetes.io/ingress.class: nginx
         cert-manager.io/cluster-issuer: ca-issuer
       tls:
       - secretName: hubble-ingress-tls
         hosts:
-        - hubble.k3d.intra
+        - hubble.k3s.intra
     backend:
       resources:
         limits:
