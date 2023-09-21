@@ -17,6 +17,8 @@ spec:
   valuesContent: |-
     installCRDs: true
     clusterResourceNamespace: "ingress-system"
+    extraArgs:
+      - "--feature-gates=ExperimentalGatewayAPISupport=true"
     resources:
       requests:
         cpu: 10m

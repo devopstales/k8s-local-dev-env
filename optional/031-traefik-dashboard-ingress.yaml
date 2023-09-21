@@ -22,7 +22,7 @@ spec:
   tls:
   - hosts:
       - traefik.k3s.intra
-    secretName: tls-docker-registry-ui-cert
+    secretName: tls-traefik-ui-cert
   rules:
   - host: traefik.k3s.intra
     http:

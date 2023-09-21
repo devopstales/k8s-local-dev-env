@@ -3,6 +3,8 @@ kind: VolumeSnapshot
 metadata:
   name: zfspv-snap
   namespace: default
+  labels:
+    app: zfspv
 spec:
   volumeSnapshotClassName: zfspv-snapclass
   source:

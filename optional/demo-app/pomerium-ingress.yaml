@@ -1,0 +1,34 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: ca-issuer
+    ingress.pomerium.io/allow_any_authenticated_user: "true"
+  name: bookinfo-ingress
+  namespace: demo-app
+spec:
+  ingressClassName: pomerium
+  rules:
+  - host: book.k3s.intra
+    http:
+      paths:
+      - backend:
+          service:
+            name: productpage
+            port:
+              number: 9080
+        path: /
+        pathType: Prefix
+      - backend:
+          service:
+            name: details
+            port:
+              number: 9080
+        path: /details
+        pathType: Prefix
+  tls:
+  - hosts:
+    - book.k3s.intra
+    secretName: tls-bookinfo-ingres-cert
+

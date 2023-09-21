@@ -7,18 +7,26 @@ ipv4:
 ipv6:
   enabled: true
 gatewayAPI:
+  enabled: true
+ingressController:
   enabled: false
 hubble:
   metrics:
     serviceMonitor:
-      enabled: false
+      enabled: true
+    dashboards:
+      enabled: true
+      namespace: monitoring-system
+      annotations:
+        grafana_folder: Hubble
     enabled:
-    - dns:query;ignoreAAAA
-    - drop
-    - tcp
-    - flow
-    - icmp
-    - http
+      - dns:query;ignoreAAAA
+      - drop
+      - tcp
+      - flow
+      - port-distribution
+      - icmp
+      - http
   ui:
     enabled: true
     replicas: 1
@@ -27,8 +35,9 @@ hubble:
       hosts:
         - hubble.k3s.intra
       annotations:
-        kubernetes.io/ingress.class: nginx
+        kubernetes.io/ingress.class: pomerium
         cert-manager.io/cluster-issuer: ca-issuer
+        ingress.pomerium.io/allow_any_authenticated_user: "true"
       tls:
       - secretName: hubble-ingress-tls
         hosts:
@@ -78,7 +87,7 @@ operator:
   prometheus:
     enabled: true
     serviceMonitor:
-      enabled: false
+      enabled: true
 ipam:
   mode: cluster-pool
   operator:
@@ -96,5 +105,5 @@ resources:
 prometheus:
   enabled: true
   serviceMonitor:
-    enabled: false
+    enabled: true
 

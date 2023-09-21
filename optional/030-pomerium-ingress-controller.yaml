@@ -1,0 +1,39 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: pomerium-controller-nginx
+  namespace: ingress-system
+spec:
+  repo: "https://helm.pomerium.io"
+  chart: pomerium
+  targetNamespace: ingress-system
+  valuesContent: |-
+    authenticate:
+      idp:
+        provider: "oidc"
+        #clientID: "56c10f259f69b0f10c8e542f5153d92b1c88136796591a1f07c4900d64a158e8"
+        #clientSecret: "b102fc3ad489b6d7a827e2d71316f638d65640b5c12fce05e92f068244e04928"
+        #url: "https://gitlab.com"
+        url: ""
+        clientID: "4af1fe3b73b43eaf9f9e"
+        clientSecret: "4c32abcb6b6665cf45c0c71255a6f4b405123888"
+        serviceAccount: "pomerium-authenticate"
+      ingress:
+        annotations:
+          cert-manager.io/cluster-issuer: ca-issuer
+        tls:
+          secretName: authenticate.k3s.intra
+    redis:
+      enabled: false
+      generateTLS: true
+    ingressController:
+      enabled: true
+      ingressClassResource:
+        enabled: true
+        default: true
+        name: "pomerium"
+    config:
+      rootDomain: k3s.intra #Change this to your reserved domain space.
+      generateTLS: true # On by default, disabled when cert-manager or another solution is in place.
+    ingress:
+      enabled: false
