@@ -2,7 +2,9 @@
 
 CA_CERTS_FOLDER="$HOME/k8s-local-dev-env/.certs"
 
-if [ ! $CA_CERTS_FOLDER/rootCA.pem ]; then
+mkdir -p $CA_CERTS_FOLDER
+
+if ! [ -f $CA_CERTS_FOLDER/rootCA.pem ]; then
   echo "Creating self-signed CA certificates for TLS and installing them in the local trust stores"
 
   echo ${CA_CERTS_FOLDER}

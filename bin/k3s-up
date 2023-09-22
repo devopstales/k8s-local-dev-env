@@ -168,18 +168,18 @@ data:
 
 # Copy manifests
 echo "Copying config to autodeploy directory"
-cp -r $HOME/k8s-local-dev-env/manifests/* /var/lib/rancher/k3s/server/manifests/custom
+cp -r $HOME/k8s-local-dev-env/k3s/manifests/* /var/lib/rancher/k3s/server/manifests/custom
 
 # create ingress
 if [ $INGRESS_TYPE == "traefik" ]; then
   echo "## Copy traefik dashboard ingress"
-  cp $HOME/k8s-local-dev-env/optional/031-traefik-dashboard-ingress.yaml /var/lib/rancher/k3s/server/manifests/custom
+  cp $HOME/k8s-local-dev-env/k3s/optional/031-traefik-dashboard-ingress.yaml /var/lib/rancher/k3s/server/manifests/custom
 elif [ $INGRESS_TYPE == "nginx" ]; then
   echo "## Copy nginx manifest"
-  cp $HOME/k8s-local-dev-env/optional/030-nginx-ingress-controller.yaml /var/lib/rancher/k3s/server/manifests/custom
+  cp $HOME/k8s-local-dev-env/k3s/optional/030-nginx-ingress-controller.yaml /var/lib/rancher/k3s/server/manifests/custom
 elif [ $INGRESS_TYPE == "pomerium" ]; then
   echo "## Copy pomerium manifest"
-  cp $HOME/k8s-local-dev-env/optional/030-pomerium-ingress-controller.yaml /var/lib/rancher/k3s/server/manifests/custom
+  cp $HOME/k8s-local-dev-env/k3s/optional/030-pomerium-ingress-controller.yaml /var/lib/rancher/k3s/server/manifests/custom
 fi
 
 # Cilium config
@@ -348,10 +348,10 @@ prometheus:
   enabled: true
   serviceMonitor:
     enabled: ${MONITORING}
-" > $HOME/k8s-local-dev-env/helmfile/000-cilium-values.yaml
+" > $HOME/k8s-local-dev-env/k3s/helmfile/000-cilium-values.yaml
     # Install Cilium
     echo "Installing cilium"
-    helmfile apply -f $HOME/k8s-local-dev-env/helmfile/000-cilium.yaml 2>/dev/null
+    helmfile apply -f $HOME/k8s-local-dev-env/k3s/helmfile/000-cilium.yaml 2>/dev/null
 fi
 
 # Install local zfs storage
@@ -362,9 +362,9 @@ case $openebs in
         ;;
     y|Y)
         echo -e "\nyes"
-        kubectl apply -f $HOME/k8s-local-dev-env/optional/zfs-pv/001-zfs-operator.yaml
-        kubectl apply -f $HOME/k8s-local-dev-env/optional/zfs-pv/002-zfs-sc.yaml
-        kubectl apply -f $HOME/k8s-local-dev-env/optional/zfs-pv/003-zfs-ssc.yaml
+        kubectl apply -f $HOME/k8s-local-dev-env/k3s/optional/zfs-pv/001-zfs-operator.yaml
+        kubectl apply -f $HOME/k8s-local-dev-env/k3s/optional/zfs-pv/002-zfs-sc.yaml
+        kubectl apply -f $HOME/k8s-local-dev-env/k3s/optional/zfs-pv/003-zfs-ssc.yaml
         ;;
     *)
         echo "No"

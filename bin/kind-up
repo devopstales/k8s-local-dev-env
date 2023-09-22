@@ -1,0 +1,47 @@
+#!/bin/bash
+
+echo "Generating kind Configuration"
+
+echo "---
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  kubeadmConfigPatches:
+  - |
+    kind: InitConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "ingress-ready=true"
+  extraPortMappings:
+  - containerPort: 80
+    hostPort: 80
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 443
+    protocol: TCP
+- role: worker
+networking:
+  apiServerPort: 6443" >  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
+
+echo "Start kid Cluster"
+kind create cluster --name c1 --config $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
+
+echo "Install helm-controller"
+kubectl apply -f $HOME/k8s-local-dev-env/kind/manifest/009-helm-controller.yaml
+
+echo "Install cert-manager"
+kubectl apply -f $HOME/k8s-local-dev-env/kind/manifest/010-cert-managger.yaml
+
+echo "Install Nginx Ingress Controller"
+kubectl apply -f $HOME/k8s-local-dev-env/kind/manifest/020-nginx-ingress-controller.yaml
+
+k3s-certgen
+
+echo "Deploy CA Certificate"
+kubectl -n ingress-system create secret generic ca-key-pair \
+  --from-file=tls.crt=$HOME/k8s-local-dev-env/.certs/rootCA.pem \
+  --from-file=tls.key=$HOME/k8s-local-dev-env/.certs/rootCA-key.pem
+
+echo "Inatsll Certificate Issuer"
+kubectl apply -f $HOME/k8s-local-dev-env/kind/manifest/011-cert-manager-issuer.yaml
