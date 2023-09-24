@@ -1,0 +1,25 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: metallb
+  namespace: ingress-system
+spec:
+  repo: "https://metallb.github.io/metallb"
+  chart: metallb
+  targetNamespace: ingress-system
+  valuesContent: |-
+    speaker:
+      resources:
+        limits:
+          cpu: 100m
+          memory: 100Mi
+    controller:
+      resources:
+        limits:
+          cpu: 100m
+          memory: 100Mi
+#    prometheus:
+#      podMonitor:
+#        enabled: true
+#      prometheusRule:
+#        enabled: true

@@ -1,47 +1,602 @@
 #!/bin/bash
 
-echo "Generating kind Configuration"
+# Get Local IP
+unameOut="$(uname -s)"
+case "${unameOut}" in
+    Linux*)     MACHINE=Linux;;
+    Darwin*)    MACHINE=Mac;;
+esac
 
+if [ ${MACHINE} == "Linux" ]; then
+    MASTER_IP=$(hostname -I | cut -d' ' -f1)
+elif [ ${MACHINE} == "Darwin" ]; then
+    MASTER_IP=$(ipconfig getifaddr en1)
+else
+    echo "Unknown MACHINE"
+    exit 1
+fi
+
+MONITORING=false
+CILIUM_INGRESS=false
+GATEWAY_API=false
+LOADBALANCER=false
+
+# Select network
+PS3='## Select network: '
+options3=("kindnet" "cilium")
+select opt in "${options3[@]}"
+do
+    case $opt in
+        "kindnet")
+            NETWORK_TYPE="kindnet"
+            break
+            ;;
+        "cilium")
+            NETWORK_TYPE="cilium"
+            echo "  disableDefaultCNI: true   # do not install kindnet
+  kubeProxyMode: none       # do not run kube-proxy
+" >> $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
+            break
+            ;;
+        *)
+            printf "Use default kindnet\n"
+            NETWORK_TYPE="kindnet"
+            ;;
+    esac
+done
+
+printf "\n"
+
+# Select LoadBalancer
+if [ ${MACHINE} == "Linux" ]; then
+  read -n 1 -p "Would you want to enable LoadBalancer? (y/N): " LoadBalancer;
+  case $LoadBalancer in
+      n|N)
+          LOADBALANCER=false
+          ;;
+      y|Y)
+          LOADBALANCER=true
+          ;;
+      *)
+          printf "\nNo\n"
+          LOADBALANCER=false
+          ;;
+  esac
+  if $LOADBALANCER; then
+    if [ $NETWORK_TYPE == "cilium" ]; then
+      printf "\n"
+      PS3='## Select LoadBalancer Type: '
+      options=("MetalLB" "cilium")
+      select opt in "${options[@]}"
+      do
+          case $opt in
+              "MetalLB")
+                  LOADBALANCER_TYPE="MetalLB"
+                  break
+                  ;;
+              "cilium")
+                  LOADBALANCER_TYPE="cilium"
+                  break
+                  ;;
+              *)
+                  LOADBALANCER_TYPE="MetalLB"
+                  ;;
+          esac
+      done
+    else
+      LOADBALANCER_TYPE="MetalLB"
+    fi
+  fi
+fi
+
+printf "\n"
+
+# Select Ingress
+if [ $NETWORK_TYPE == "cilium" ]; then
+    if $LOADBALANCER; then
+      options2=("nginx" "pomerium" "cilium")
+    else
+      options2=("nginx" "pomerium")
+    fi
+else
+  options2=("nginx" "pomerium")
+fi
+
+PS3='## Select Ingress Controller: '
+select opt in "${options2[@]}"
+do
+    case $opt in
+        "nginx")
+            INGRESS_TYPE="nginx"
+            break
+            ;;
+        "pomerium")
+            INGRESS_TYPE="pomerium"
+            break
+            ;;
+        "cilium")
+            INGRESS_TYPE="cilium"
+            CILIUM_INGRESS=true
+            break
+            ;;
+        *)
+            printf "Use Default nginx\n"
+            INGRESS_TYPE="nginx"
+            ;;
+    esac
+done
+
+# Select cilium functions
+if [ $NETWORK_TYPE == "cilium" ]; then
+  # Enable monitoring
+  printf "\n"
+  read -n 1 -p "Would you want to enable Monitoring? (y/N): " monitoring;
+  case $monitoring in
+      n|N)
+          MONITORING=false
+          ;;
+      y|Y)
+          MONITORING=true
+          ;;
+      *)
+          printf "\nNo\n"
+          MONITORING=false
+          ;;
+  esac
+  printf "\n"
+  # Select Apigateway
+  if [ ! $LOADBALANCER ]; then
+      read -n 1 -p "Would you want to enable ApiGateway? (y/N): " gateway;
+      case $gateway in
+          n|N)
+              GATEWAY_API=false
+              ;;
+          y|Y)
+              GATEWAY_API=true
+              ;;
+          *)
+              printf "\nNo\n"
+              GATEWAY_API=false
+              ;;
+      esac
+      printf "\n"
+  fi
+  printf "\n"
+  # Select MTLS
+  read -n 1 -p "Would you want to enable mTLS? (y/N): " mTLS;
+  case $mTLS in
+      n|N)
+          MTLS=false
+          ;;
+      y|Y)
+          MTLS=true
+          ;;
+      *)
+          printf "\nNo\n"
+          MTLS=false
+          ;;
+  esac
+  printf "\n"
+fi
+
+# Select docker registry
+printf "\n"
+read -n 1 -p "Would you want to enable docker registry? (y/N): " registry;
+case $registry in
+    n|N)
+        REGISTRY=false
+        ;;
+    y|Y)
+        REGISTRY=true
+        ;;
+    *)
+        printf "\nNo\n"
+        REGISTRY=false
+        ;;
+esac
+if $REGISTRY; then
+  if [ ${MACHINE} == "Linux" ]; then
+    printf "\n"
+    PS3='## Select Registry Type: '
+    options4=(container local)
+    select opt in "${options4[@]}"
+    do
+        case $opt in
+            "container")
+                REGISTRY_TYPE="container"
+                break
+                ;;
+            "local")
+                REGISTRY_TYPE="local"
+                break
+                ;;
+            *)
+                printf "Use Default container\n"
+                REGISTRY_TYPE="container"
+                ;;
+        esac
+    done
+  else
+    REGISTRY_TYPE="local"
+  fi
+  if [ $REGISTRY_TYPE == "container" ]; then
+    reg_name='kind-registry'
+    reg_port='5001'
+    if [ "$(docker inspect -f '{{.State.Running}}' "${reg_name}" 2>/dev/null || true)" != 'true' ]; then
+      docker run \
+        -d --restart=always -p "127.0.0.1:${reg_port}:5000" --name "${reg_name}" \
+        registry:2
+    fi
+  fi
+fi
+
+# Generate base config
 echo "---
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
-- role: control-plane
-  kubeadmConfigPatches:
+- role: control-plane" >  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
+
+if [ ! $LOADBALANCER ]; then
+  echo "  kubeadmConfigPatches:
   - |
     kind: InitConfiguration
     nodeRegistration:
       kubeletExtraArgs:
         node-labels: "ingress-ready=true"
-  extraPortMappings:
-  - containerPort: 80
-    hostPort: 80
-    protocol: TCP
-  - containerPort: 443
-    hostPort: 443
-    protocol: TCP
-- role: worker
-networking:
-  apiServerPort: 6443" >  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
+    extraPortMappings:
+    - containerPort: 80
+      hostPort: 80
+      protocol: TCP
+    - containerPort: 443
+      hostPort: 443
+      protocol: TCP" >>  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
+fi
 
-echo "Start kid Cluster"
-kind create cluster --name c1 --config $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
+echo "- role: worker" >>  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
 
-echo "Install helm-controller"
+echo "networking:
+  apiServerPort: 6443" >>  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
+
+if $REGISTRY; then
+    echo 'containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      config_path = "/etc/containerd/certs.d"' >>  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
+fi
+
+
+printf "\n## Start kid Cluster\n"
+kind create cluster --name c1 --config "$HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml"
+
+# Registry config
+if $REGISTRY; then
+  if [ $REGISTRY_TYPE == "container" ]; then
+    if [ "$(docker inspect -f='{{json .NetworkSettings.Networks.kind}}' "${reg_name}")" = 'null' ]; then
+      docker network connect "kind" "${reg_name}"
+    fi
+  elif [ $REGISTRY_TYPE == "local" ]; then
+    reg_port='5000'
+    reg_name=$MASTER_IP
+  fi
+  REGISTRY_DIR="/etc/containerd/certs.d/localhost:${reg_port}"
+  for node in $(kind get nodes --name c1); do
+    docker exec "${node}" mkdir -p "${REGISTRY_DIR}"
+    cat <<EOF | docker exec -i "${node}" cp /dev/stdin "${REGISTRY_DIR}/hosts.toml"
+[host."http://${reg_name}:5000"]
+EOF
+  done
+  cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-registry-hosting
+  namespace: kube-public
+data:
+  localRegistryHosting.v1: |
+    host: "localhost:${reg_port}"
+    help: "https://kind.sigs.k8s.io/docs/user/local-registry/"
+EOF
+fi
+
+# Cilium config
+CONTRAOL_PLANE_IP=$(docker inspect c1-control-plane -f'{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}')
+
+if [ $NETWORK_TYPE == "cilium" ]; then
+    # Apply monitoring
+    if $MONITORING; then
+      printf "## Install monitoring CRDs\n"
+      helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+      helm template kube-prometheus prometheus-community/kube-prometheus-stack --include-crds \
+        | yq 'select(.kind == "CustomResourceDefinition") * {"metadata": {"annotations": {"meta.helm.sh/release-name": "kube-prometheus", "meta.helm.sh/release-namespace": "monitoring-system"}}}' \
+        | kubectl create -f -
+      kubectl create ns monitoring-system
+    fi
+    # Apply Apigateway
+    if $GATEWAY_API; then
+        printf "## Install Gateway Api CRDs\n"
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.7.0/config/crd/experimental/gateway.networking.k8s.io_gatewayclasses.yaml
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.7.0/config/crd/experimental/gateway.networking.k8s.io_gateways.yaml
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.7.0/config/crd/experimental/gateway.networking.k8s.io_httproutes.yaml
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.7.0/config/crd/experimental/gateway.networking.k8s.io_tlsroutes.yaml
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v0.7.0/config/crd/experimental/gateway.networking.k8s.io_referencegrants.yaml
+        kubectl get crd | awk '{if ($1 ~ "NAME|networking.k8s.io") print $0}'
+    fi
+    # Generate Cilium Config
+    printf "## Generating Cilium helm values\n"
+    echo "kubeProxyReplacement: true
+
+k8sServiceHost: ${CONTRAOL_PLANE_IP}
+k8sServicePort: 6443
+rollOutCiliumPods: true
+
+ipv4:
+  enabled: true
+ipv6:
+  enabled: true
+
+# WireGuard
+encryption:
+  nodeEncryption: false
+
+# L7 policy
+loadBalancer:
+  l7:
+    backend: envoy
+envoy:
+  enabled: true" > $HOME/k8s-local-dev-env/kind/helmfile/000-cilium-values.yaml
+
+  if [ $LOADBALANCER_TYPE == "cilium" ]; then
+    echo "
+# L2 LoadBalancer service
+l2announcements:
+  enabled: ${LOADBALANCER}
+" >> $HOME/k8s-local-dev-env/kind/helmfile/000-cilium-values.yaml
+  fi
+
+echo "# Api gateway
+gatewayAPI:
+  enabled: ${GATEWAY_API}
+
+# Ingress controller
+ingressController:
+  enabled: ${CILIUM_INGRESS}
+  loadbalancerMode: shared
+
+# mTLS
+authentication:
+  mode: "required"
+  mutual:
+    spire:
+      enabled: ${MTLS}
+      install:
+        enabled: ${MTLS}
+
+hubble:
+  metrics:
+    serviceMonitor:
+      enabled: ${MONITORING}
+    dashboards:
+      enabled: ${MONITORING}
+      namespace: monitoring-system
+      annotations:
+        grafana_folder: Hubble
+    enabled:
+      - dns:query;ignoreAAAA
+      - drop
+      - tcp
+      - flow
+      - port-distribution
+      - icmp
+      - http
+  ui:
+    enabled: true
+    replicas: 1
+    ingress:
+      enabled: true
+      hosts:
+        - hubble.k3s.intra
+      annotations:
+        kubernetes.io/ingress.class: ${INGRESS_TYPE}
+        cert-manager.io/cluster-issuer: ca-issuer
+        ingress.pomerium.io/allow_any_authenticated_user: \"true\"
+      tls:
+      - secretName: hubble-ingress-tls
+        hosts:
+        - hubble.k3s.intra
+    backend:
+      resources:
+        limits:
+          cpu: 60m
+          memory: 300Mi
+        requests:
+          cpu: 20m
+          memory: 64Mi
+    frontend:
+      server:
+        ipv6:
+          enabled: false
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1024M
+        requests:
+          cpu: 100m
+          memory: 64Mi
+    proxy:
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 1024M
+        requests:
+          cpu: 100m
+          memory: 64Mi
+  relay:
+    enabled: true
+    resources:
+      limits:
+        cpu: 100m
+        memory: 500Mi
+operator:
+  replicas: 1
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: ${MONITORING}
+ipam:
+  mode: cluster-pool
+  operator:
+    clusterPoolIPv4PodCIDRList: 10.43.0.0/16
+    clusterPoolIPv4MaskSize: 24
+    clusterPoolIPv6PodCIDRList: fd00::/104
+    clusterPoolIPv6MaskSize: 120
+resources:
+  limits:
+    cpu: 4000m
+    memory: 4Gi
+  requests:
+    cpu: 100m
+    memory: 512Mi
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: ${MONITORING}
+" >> $HOME/k8s-local-dev-env/kind/helmfile/000-cilium-values.yaml
+fi
+
+# Install Cilium
+if [ $NETWORK_TYPE == "cilium" ]; then
+    # Install Cilium
+    printf "\n## Installing cilium\n"
+    helmfile apply -f $HOME/k8s-local-dev-env/kind/helmfile/000-cilium.yaml 2>/dev/null
+fi
+
+printf "\n## Install helm-controller\n"
 kubectl apply -f $HOME/k8s-local-dev-env/kind/manifest/009-helm-controller.yaml
 
-echo "Install cert-manager"
+printf "\n## Install cert-manager\n"
 kubectl apply -f $HOME/k8s-local-dev-env/kind/manifest/010-cert-managger.yaml
 
-echo "Install Nginx Ingress Controller"
-kubectl apply -f $HOME/k8s-local-dev-env/kind/manifest/020-nginx-ingress-controller.yaml
-
-k3s-certgen
-
-echo "Deploy CA Certificate"
-kubectl -n ingress-system create secret generic ca-key-pair \
-  --from-file=tls.crt=$HOME/k8s-local-dev-env/.certs/rootCA.pem \
-  --from-file=tls.key=$HOME/k8s-local-dev-env/.certs/rootCA-key.pem
-
-echo "Inatsll Certificate Issuer"
+printf "\n## Install Certificate Issuer\nWaite for cert-manager to be ready: "
+while [[ $(kubectl get pods -n ingress-system -l app=cert-manager -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" ]]; do
+  sleep 10
+  printf "."
+done
+printf "\n"
 kubectl apply -f $HOME/k8s-local-dev-env/kind/manifest/011-cert-manager-issuer.yaml
+
+# Generate Certificate
+if [ ! -f $HOME/k8s-local-dev-env/.certs/rootCA.pem ]; then
+  printf "\n##  Generate CA Certificate\n"
+  k3s-certgen
+fi
+
+# Create LoadBalancer
+if $LOADBALANCER; then
+  KIND_NET_CIDR=$(docker network inspect kind -f '{{(index .IPAM.Config 0).Subnet}}')
+  METALLB_IP_RANGE=$(echo ${KIND_NET_CIDR} | sed "s@0.0/16@255.193/28@")
+  # Select Loadbalancer
+  if [ $LOADBALANCER_TYPE == "MetalLB" ]; then
+    echo "apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: default-pool
+  namespace: ingress-system
+spec:
+  addresses:
+  - ${METALLB_IP_RANGE}
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: l2-advertisement
+  namespace: ingress-system
+spec:
+  ipAddressPools:
+  - default-pool" > $HOME/k8s-local-dev-env/kind/config/loadbalancer.yaml
+    kubectl apply -f $HOME/k8s-local-dev-env/kind/manifest/020-metallb.yaml
+  elif [ $LOADBALANCER_TYPE == "cilium" ]; then
+    echo "---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumL2AnnouncementPolicy
+metadata:
+  name: policy1
+spec:
+  nodeSelector:
+    matchExpressions:
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+  interfaces:
+  - ^eth[0-9]+
+  externalIPs: true
+  loadBalancerIPs: true
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: default-pool
+spec:
+  cidrs:
+  - cidr: ${METALLB_IP_RANGE}
+" > $HOME/k8s-local-dev-env/kind/config/loadbalancer.yaml
+  fi
+  # Deploy pool
+  printf "\n## Apply LoadBalancer\n"
+  if [ $LOADBALANCER_TYPE == "MetalLB" ]; then
+    printf "Waite for metallb to be ready: "
+    while [[ $(kubectl get pods -n ingress-system -l app.kubernetes.io/instance=metallb -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" ]]; do
+      sleep 10
+      printf "."
+    done
+    printf "\n"
+  fi
+  kubectl apply -f $HOME/k8s-local-dev-env/kind/config/loadbalancer.yaml
+fi
+
+# Create ingress
+if [ $INGRESS_TYPE == "nginx" ]; then
+    printf "\n## Install Nginx Ingress Controller\n"
+    if $LOADBALANCER; then
+      kubectl apply -f $HOME/k8s-local-dev-env/kind/manifest/031-lb-nginx-ingress-controller.yaml
+    else
+      kubectl apply -f $HOME/k8s-local-dev-env/kind/manifest/030-nginx-ingress-controller.yaml
+    fi
+elif [ $INGRESS_TYPE == "pomerium" ]; then
+    printf "\n## Install pomerium Ingress Controller\n"
+    if $LOADBALANCER; then
+      kubectl apply -f $HOME/k8s-local-dev-env/kind/manifest/033-lb-pomerium-ingress-controller.yaml
+    else
+      echo "Not implemented yet"
+    fi
+elif [ $INGRESS_TYPE == "apigateway" ]; then
+    echo "apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
+metadata:
+  name: main-gateway
+spec:
+  gatewayClassName: cilium
+  listeners:
+  - protocol: HTTP
+    port: 80
+    name: http-port
+  - protocol: HTTPS
+    port: 443
+    name: https-port" > $HOME/k8s-local-dev-env/kind/config/gateway.yaml
+    kubectl apply -f $HOME/k8s-local-dev-env/kind/config/gateway.yaml
+fi
+
+# https://medium.com/@charled.breteche/manage-ssl-certificates-for-local-kubernetes-clusters-with-cert-manager-9037ba39c799
+# https://medium.com/@charled.breteche
+## DODO:
+# pomerium host port
+# linerd and linkerd-sdn
+# host DNS
+# openid
+# k3sd ???
