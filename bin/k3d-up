@@ -1,0 +1,20 @@
+#!/bin/bash
+
+echo 'apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: mycluster
+servers: 1
+kubeAPI:
+  hostPort: "6445"
+' > $HOME/k8s-local-dev-env/k3d/config/k3d-config.yaml
+
+ k3d cluster create --config $HOME/k8s-local-dev-env/k3d/config/k3d-config.yaml
+
+# TODO
+## network options
+## LoadBalancer options
+## ingress options
+## registry options
+## mount default deploy folder to manifests
+

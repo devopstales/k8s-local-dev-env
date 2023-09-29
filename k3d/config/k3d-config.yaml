@@ -1,0 +1,8 @@
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: mycluster
+servers: 1
+kubeAPI:
+  hostPort: "6445"
+

@@ -3,7 +3,7 @@
 unameOut="$(uname -s)"
 case "${unameOut}" in
     Linux*)     MACHINE=Linux;;
-    Darwin*)    MACHINE=Mac;;
+    Darwin*)    MACHINE=Darwin;;
 esac
 
 if [ ${MACHINE} == "Linux" ]; then

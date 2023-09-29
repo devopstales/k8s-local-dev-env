@@ -4,7 +4,7 @@
 unameOut="$(uname -s)"
 case "${unameOut}" in
     Linux*)     MACHINE=Linux;;
-    Darwin*)    MACHINE=Mac;;
+    Darwin*)    MACHINE=Darwin;;
 esac
 
 if [ ${MACHINE} == "Linux" ]; then
@@ -48,7 +48,7 @@ done
 printf "\n"
 
 # Select LoadBalancer
-if [ ${MACHINE} == "Linux" ]; then
+#if [ ${MACHINE} == "Linux" ]; then
   read -n 1 -p "Would you want to enable LoadBalancer? (y/N): " LoadBalancer;
   case $LoadBalancer in
       n|N)
@@ -87,7 +87,7 @@ if [ ${MACHINE} == "Linux" ]; then
       LOADBALANCER_TYPE="MetalLB"
     fi
   fi
-fi
+#fi
 
 printf "\n"
 
@@ -238,7 +238,7 @@ nodes:
 - role: control-plane" >  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
 
 if [ ! $LOADBALANCER ]; then
-  echo "  kubeadmConfigPatches:
+  echo '  kubeadmConfigPatches:
   - |
     kind: InitConfiguration
     nodeRegistration:
@@ -250,13 +250,17 @@ if [ ! $LOADBALANCER ]; then
       protocol: TCP
     - containerPort: 443
       hostPort: 443
-      protocol: TCP" >>  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
+      protocol: TCP' >>  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
 fi
 
 echo "- role: worker" >>  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
 
-echo "networking:
-  apiServerPort: 6443" >>  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
+echo 'featureGates:
+  "MultiCIDRRangeAllocator": true
+runtimeConfig:
+  "api/alpha": "true"
+networking:
+  apiServerPort: 6443' >>  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
 
 if $REGISTRY; then
     echo 'containerdConfigPatches:
@@ -489,6 +493,7 @@ while [[ $(kubectl get pods -n ingress-system -l app=cert-manager -o 'jsonpath={
   sleep 10
   printf "."
 done
+sleep 10
 printf "\n"
 kubectl apply -f $HOME/k8s-local-dev-env/kind/manifest/011-cert-manager-issuer.yaml
 
