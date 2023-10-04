@@ -145,7 +145,7 @@ if [ $NETWORK_TYPE == "cilium" ]; then
   esac
   printf "\n"
   # Select Apigateway
-  if [ ! $LOADBALANCER ]; then
+  if $LOADBALANCER; then
       read -n 1 -p "Would you want to enable ApiGateway? (y/N): " gateway;
       case $gateway in
           n|N)
@@ -231,35 +231,44 @@ if $REGISTRY; then
 fi
 
 # Generate base config
-echo "---
+echo '---
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
-- role: control-plane" >  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
+- role: control-plane' >  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
 
-if [ ! $LOADBALANCER ]; then
+if [ "$LOADBALANCER" = false ]; then
   echo '  kubeadmConfigPatches:
   - |
     kind: InitConfiguration
     nodeRegistration:
       kubeletExtraArgs:
         node-labels: "ingress-ready=true"
-    extraPortMappings:
-    - containerPort: 80
-      hostPort: 80
-      protocol: TCP
-    - containerPort: 443
-      hostPort: 443
-      protocol: TCP' >>  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
+  extraPortMappings:
+  - containerPort: 80
+    hostPort: 80
+    protocol: TCP
+  - containerPort: 443
+    hostPort: 443
+    protocol: TCP' >>  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
 fi
 
-echo "- role: worker" >>  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
+echo '- role: worker' >>  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
 
-echo 'featureGates:
-  "MultiCIDRRangeAllocator": true
-runtimeConfig:
-  "api/alpha": "true"
-networking:
+if [ "$LOADBALANCER" = false ]; then
+  echo '  kubeadmConfigPatches:
+  - |
+    kind: JoinConfiguration
+    nodeRegistration:
+      kubeletExtraArgs:
+        node-labels: "dns-ready=true"
+  extraPortMappings:
+  - containerPort: 53
+    hostPort: 53
+    protocol: UDP' >>  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
+fi
+
+echo 'networking:
   apiServerPort: 6443' >>  $HOME/k8s-local-dev-env/kind/config/kind-c1-config.yaml
 
 if $REGISTRY; then
@@ -503,6 +512,11 @@ if [ ! -f $HOME/k8s-local-dev-env/.certs/rootCA.pem ]; then
   k3s-certgen
 fi
 
+echo "##  Deploy CA Certificate"
+kubectl -n ingress-system create secret tls ca-key-pair \
+  --cert=$HOME/k8s-local-dev-env/.certs/rootCA.pem \
+  --key=$HOME/k8s-local-dev-env/.certs/rootCA-key.pem
+
 # Create LoadBalancer
 if $LOADBALANCER; then
   KIND_NET_CIDR=$(docker network inspect kind -f '{{(index .IPAM.Config 0).Subnet}}')
@@ -602,6 +616,8 @@ fi
 ## DODO:
 # pomerium host port
 # linerd and linkerd-sdn
-# host DNS
+# host DNS [-]
+## hyhole loadbalancer config
+## external-dns hyhole registration
 # openid
-# k3sd ???
+# k3sd [-]

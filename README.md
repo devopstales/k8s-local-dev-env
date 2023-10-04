@@ -48,6 +48,12 @@ $ brew install chipmk/tap/docker-mac-net-connect
 $ sudo brew services start chipmk/tap/docker-mac-net-connect
 
 # Restart the docker for mac services
+
+# get node ip
+$ docker inspect c1-control-plane | jq -r '.[].NetworkSettings.Networks.kind.IPAddress'
+
+# curl
+curl -I 198.18.2.3
 ```
 
 # Installation

@@ -129,6 +129,7 @@ if [ ! -f $HOME/k8s-local-dev-env/.certs/rootCA.pem ]; then
   echo "##  Generate CA Certificate"
   k3s-certgen
 fi
+
 echo "##  Deploy CA Certificate"
 kubectl -n ingress-system create secret tls ca-key-pair \
   --cert=$HOME/k8s-local-dev-env/.certs/rootCA.pem \
