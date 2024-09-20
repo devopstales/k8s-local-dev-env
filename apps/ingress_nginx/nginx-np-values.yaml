@@ -1,0 +1,34 @@
+rbac:
+  create: true
+podSecurityPolicy:
+  enabled: false
+controller:
+  kind: DaemonSet
+  allowSnippetAnnotations: false
+  service:
+    type: ""
+  hostNetwork: true
+  watchIngressWithoutClass: true
+  extraArgs:
+    ingress-class: "nginx"
+  ingressClassResource:
+    name: nginx
+    enabled: true
+    default: true
+    controllerValue: "k8s.io/ingress-nginx"
+  config:
+    proxy-body-size: 200m
+  resources:
+    limits:
+      cpu: 200m
+      memory: 500Mi
+    requests:
+      cpu: 50m
+      memory: 300Mi
+  metrics:
+    port: 10254
+    enabled: true
+    service:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "10254"

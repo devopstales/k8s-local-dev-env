@@ -1,0 +1,10 @@
+__pycache__
+
+.certs/*.pem
+.certs/*.key
+.certs/*.crt
+
+apps/lb_cilium_l2/cilium-pool.yaml
+
+tmp
+TODO.md
