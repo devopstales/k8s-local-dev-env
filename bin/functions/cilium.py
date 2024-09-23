@@ -77,7 +77,7 @@ def gen_cilium_config():
             },
             "ui": {
                 "enabled": True,
-                "replias": 1,
+                "replicas": 1,
                 "ingress": {
                     "enabled": True,
                     "hosts": ["cilium.kdev.intra"],

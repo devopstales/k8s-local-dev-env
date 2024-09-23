@@ -53,14 +53,21 @@ EOF
 ```bash
 PushProx ???
 ```
-https://medium.com/@charled.breteche/securing-grafana-with-keycloak-sso-d01fec05d984
-https://medium.com/@charled.breteche/kind-fix-missing-prometheus-operator-targets-1a1ff5d8c8ad
+
+##  Docs
+
+* https://medium.com/@charled.breteche/securing-grafana-with-keycloak-sso-d01fec05d984
+* https://medium.com/@charled.breteche/kind-fix-missing-prometheus-operator-targets-1a1ff5d8c8ad
+* https://particule.io/en/blog/k8s-no-cloud/
+* https://medium.com/@charled.breteche/kind-cluster-with-cilium-and-no-kube-proxy-c6f4d84b5a9d
+* https://medium.com/@charled.breteche/kind-cilium-metallb-and-no-kube-proxy-a9fe66ddfad6
+* https://medium.com/@charled.breteche/using-dnsmasq-with-a-local-kind-clusters-9a27c8987073
 
 
-https://particule.io/en/blog/k8s-no-cloud/
+## Future
 
-https://medium.com/@charled.breteche/kind-cluster-with-cilium-and-no-kube-proxy-c6f4d84b5a9d
-https://medium.com/@charled.breteche/kind-cilium-metallb-and-no-kube-proxy-a9fe66ddfad6
-
-https://medium.com/@charled.breteche/using-dnsmasq-with-a-local-kind-clusters-9a27c8987073
-
+* Identity-based Security
+  * SPIFFE
+    * https://artifacthub.io/packages/helm/helm-spire/spire
+  * SPIRE
+  * https://cert-manager.io/docs/usage/csi-driver-spiffe/
