@@ -9,7 +9,9 @@ from .helepers import (
     CONFIG_JSON,
 )
 
-KIND_INIT_CONFIG_PATH = APPHOME + "/mounts/cilium-entrypoint.sh" + ":/bin/cilium-entrypoint.sh"
+import docker
+from netaddr import IPNetwork
+
 KIND_CONFIG_PATH = APPHOME + "/config/kind-config.yaml"
 
 #############################################################################
@@ -55,9 +57,29 @@ def gen_kind_config():
             },
         )
 
+    if CONFIG_JSON['registry']['enabled'] == "true":
+        d = docker.from_env()
+        container = d.containers.get("docker_registry")
+        network = d.networks.get("kind")
+        registry_ip_network = network.attrs['Containers'][container.id]['IPv4Address']
+        REGISTRY_IP = IPNetwork(registry_ip_network).ip
+        kind_registry_config = f"""containerdConfigPatches:
+- |-
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.kdev.intra:5000"]
+    endpoint = ["http://registry.kdev.intra:5000"]
+  [plugins."io.containerd.grpc.v1.cri".registry.configs."{REGISTRY_IP}:5000".tls]
+    insecure_skip_verify = true
+  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{REGISTRY_IP}:5000"]
+    endpoint = ["http://{REGISTRY_IP}:5000"]
+  [plugins."io.containerd.grpc.v1.cri".registry.configs."{REGISTRY_IP}:5000".tls]
+    insecure_skip_verify = true
+"""
+
     print("# Generate KIND Config")
     with open(KIND_CONFIG_PATH, 'w') as yaml_file:
         yaml.dump(kind_base_config, yaml_file, default_flow_style=False)
+        if CONFIG_JSON['registry']['enabled'] == "true":
+            yaml_file.write(kind_registry_config)
 
 def delete_kind_config():
     NotImplemented

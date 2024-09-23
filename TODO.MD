@@ -12,6 +12,7 @@ sudo ip route add 10.0.0.0/16 via 172.18.0.2
 ## Auth
 
 https://medium.com/@charled.breteche/kind-keycloak-securing-kubernetes-api-server-with-oidc-371c5faef902
+<<<<<<< HEAD
 
 ```bash
 k create ns auth-system
@@ -62,6 +63,10 @@ PushProx ???
 * https://medium.com/@charled.breteche/kind-cluster-with-cilium-and-no-kube-proxy-c6f4d84b5a9d
 * https://medium.com/@charled.breteche/kind-cilium-metallb-and-no-kube-proxy-a9fe66ddfad6
 * https://medium.com/@charled.breteche/using-dnsmasq-with-a-local-kind-clusters-9a27c8987073
+* registry
+  * https://kind.sigs.k8s.io/docs/user/local-registry/
+  * https://medium.com/@charled.breteche/caching-docker-images-for-local-kind-clusters-252fac5434aa
+  * https://maelvls.dev/docker-proxy-registry-kind/
 
 
 ## Future

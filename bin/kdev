@@ -9,7 +9,7 @@ from functions.mesage import \
     
 from functions.docker import \
     create_docker_network, delete_docker_network, \
-    start_registry
+    start_registry, stop_registry
 
 from functions.kind import \
     gen_kind_config, delete_kind_config, \
@@ -53,6 +53,8 @@ def up_functions():
         from functions.helepers import dependency_test
         dependency_test(DEPENDENCIES, KERNEL_MODULES)
     create_docker_network()
+    if CONFIG_JSON['registry']['enabled'] == "true":
+        start_registry()
     gen_kind_config()
     start_kind()
     #deploy_crds() # anmespaces, crds for: prometheus, gatewayApi, cert-manager, etc
@@ -62,6 +64,8 @@ def up_functions():
 def down_functions():
     delete_kind()
     delete_kind_config()
+    if CONFIG_JSON['registry']['enabled'] == "true":
+        stop_registry()
     delete_docker_network()
 
 def enable_function(addon):
@@ -71,7 +75,6 @@ def enable_function(addon):
     if addon == "cilium":
         gen_cilium_config()
         install_cilium()
-
 
     if addon == "ingress":
         install_ingress()
@@ -112,6 +115,9 @@ def disable_function(addon):
     if addon == "cert-manager":
         remove_cert_manager()
 
+    if addon == "registry":
+        stop_registry()
+
 def import_image_function(image_name):
     load_docker_image(image_name)
 
@@ -127,24 +133,14 @@ def status_functions():
         Cluster CIDR:   {CONFIG_JSON['network']['cluster_cidr']}
         Service CIDR:   {CONFIG_JSON['network']['service_cidr']}
 Addons:
+    DNS:
+    Rehistry:
     CNI:
-        Status   {ok_status}
-        Driver:  {CONFIG_JSON['network']['driver']}
-        Subnet:  {CONFIG_JSON['network']['subnet']}
     LoadBalancer:
-        Status   {ok_status}
-        Driver:  {CONFIG_JSON['network']['loadbalancer']}
-        Network: {CONFIG_JSON['network']['loadbalancer_cidr']}
     Ingress:
-        Status   {ok_status}
-        Driver:  {CONFIG_JSON['ingress']['driver']}
     ApiGateway:
-        Status   {ok_status}
-        Driver:  {CONFIG_JSON['ingress']['apigateway']}
     mTLS:
-        Enabled: {CONFIG_JSON['network']['mtls']}
     Monitoring:
-        Enabled: {CONFIG_JSON['monitoring']['enabled']}
 """)
  
 
@@ -186,7 +182,7 @@ if args.enable:
     enable_function(args.enable)
 
 if args.disable:
-    disable_function(args.enable)
+    disable_function(args.disable)
 
 if args.load_image:
     import_image_function(args.load_image)

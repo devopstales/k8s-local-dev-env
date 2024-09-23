@@ -1,7 +1,14 @@
 #!/usr/bin/env python3
 
 import docker
-from .helepers import CONFIG_JSON
+from .helepers import CONFIG_JSON, APPHOME
+
+import yaml, json, sys
+import ruamel.yaml
+
+from netaddr import IPNetwork
+
+KIND_CONFIG_PATH = APPHOME + "/config/local-registry-config.yaml"
 
 #############################################################################
 ## Docker functions
@@ -56,25 +63,44 @@ def get_docker_network(name):
 #############################################################################
 
 def start_registry():
+    REGISTRY_PORT = CONFIG_JSON['registry']['port']
+    REGISTRY_FOLDER = CONFIG_JSON['registry']['rootdirectory']
     d = docker.from_env()
     d.containers.run(
         name="docker_registry",
         detach=True,
-        restart_policy="always",
-        ports={'5000/tcp': ('127.0.0.1', 5000)},
+        restart_policy={"Name": "always"},
+        ports={'5000/tcp': ('127.0.0.1', REGISTRY_PORT)},
         network="kind",
-        network_mode="bridge",
         image="registry:2",
         volumes=[
-            "/var/lib/docker-registry:/var/lib/docker-registry"
+            f"{REGISTRY_FOLDER}:/var/lib/registry",
         ]
     )
 
+#    container = d.containers.get("docker_registry")
+#    network = d.networks.get("kind")
+#    registry_ip_network = network.attrs['Containers'][container.id]['IPv4Address']
+#    REGISTRY_IP = IPNetwork(registry_ip_network).ip
+#    kind_registry_config = f"""apiVersion: v1
+#kind: ConfigMap
+#metadata:
+#  name: local-registry-hosting
+#  namespace: kube-public
+#data:
+#  local_registry_hosting: |
+#    help: "https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry#specification-for-localregistryhosting-v1"
+#    host: "{REGISTRY_IP}:5000"
+#    HostFromContainerRuntime: "{REGISTRY_IP}:5000"
+#"""
+#
+#    with open(KIND_CONFIG_PATH, 'w') as yaml_file:
+#        yaml_file.write(kind_registry_config)
+
 def stop_registry():
     d = docker.from_env()
-    container = d.get("docker_registry")
-    container.remove(
-        forece= True,
-    )
-
-
+    try:
+        container = d.containers.get("docker_registry")
+        container.remove(force=True)
+    except:
+        pass
