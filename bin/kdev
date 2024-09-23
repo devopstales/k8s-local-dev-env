@@ -55,8 +55,9 @@ def up_functions():
     create_docker_network()
     gen_kind_config()
     start_kind()
-    create_sso_server()
     #deploy_crds() # anmespaces, crds for: prometheus, gatewayApi, cert-manager, etc
+    if CONFIG_JSON['sso']['enabled'] == 'true':
+        create_sso_server()
 
 def down_functions():
     delete_kind()
@@ -81,6 +82,12 @@ def enable_function(addon):
     if addon == "dns":
         if CONFIG_JSON['network']['loadbalancer'] == "cilium":
             create_dns_server()
+
+    if addon == "sso":
+        if CONFIG_JSON['sso']['enabled'] == 'true':
+            create_sso_server()
+        else:
+            print(f"SSO in not enable in config")
 
     if addon == "loadbalancer":
         if CONFIG_JSON['network']['loadbalancer'] == "cilium":
@@ -154,8 +161,7 @@ parser.add_argument("--status", action="store_true", default=False, help="Status
 parser.add_argument("--enable", action="store", default=False, help="Enable Kubernetes addon")
 parser.add_argument("--disable", action="store", default=False, help="Disable Kubernetes Addon")
 parser.add_argument("--load-image", nargs=1, default=False, help="Load local docker image to kind cluster")
-
-
+parser.add_argument("--get-hosts", action="store", default=False, help="Get hosts file content")
 
 args = parser.parse_args()
 
