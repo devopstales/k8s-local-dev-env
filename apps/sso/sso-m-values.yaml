@@ -34,3 +34,10 @@ extraVolumes:
 - name: config-volume
   configMap:
     name: keycloak-realm-config
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+  prometheusRule:
+    enabled: true
+    namespase: "monitoring-system"

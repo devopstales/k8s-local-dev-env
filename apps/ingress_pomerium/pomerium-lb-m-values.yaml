@@ -24,3 +24,11 @@ config:
   generateTLS: true # On by default, disabled when cert-manager or another solution is in place.
 ingress:
   enabled: false
+metrics:
+  enabled: true
+  port: 9090
+serviceMonitor:
+  enabled: true
+  namespace: ''
+  labels:
+    release: prometheus

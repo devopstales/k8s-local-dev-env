@@ -1,0 +1,33 @@
+repositories:
+- name: pomerium
+  url: https://helm.pomerium.io
+
+releases:
+- name: pomerium
+  namespace: ingress-system
+  chart: pomerium/pomerium
+  labels:
+    environment: nodeport
+  values:
+   - pomerium-np-values.yaml
+- name: pomerium
+  namespace: ingress-system
+  chart: pomerium/pomerium
+  labels:
+    environment: nodeport-monitoring
+  values:
+   - pomerium-np-m-values.yaml
+- name: pomerium
+  namespace: ingress-system
+  chart: pomerium/pomerium
+  labels:
+    environment: loadbalancer
+  values:
+   - pomerium-lb-values.yaml
+- name: pomerium
+  namespace: ingress-system
+  chart: pomerium/pomerium
+  labels:
+    environment: loadbalancer-monitoring
+  values:
+   - pomerium-lb-m-values.yaml

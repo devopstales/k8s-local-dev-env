@@ -6,5 +6,14 @@ releases:
 - name: keycloak
   namespace: auth-system
   chart: bitnami/keycloak
+  labels:
+    environment: simple
   values:
    - sso-values.yaml
+- name: keycloak
+  namespace: auth-system
+  chart: bitnami/keycloak
+  labels:
+    environment: monitoring
+  values:
+   - sso-m-values.yaml

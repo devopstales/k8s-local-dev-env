@@ -58,8 +58,6 @@ def up_functions():
     gen_kind_config()
     start_kind()
     #deploy_crds() # anmespaces, crds for: prometheus, gatewayApi, cert-manager, etc
-    if CONFIG_JSON['sso']['enabled'] == 'true':
-        create_sso_server()
 
 def down_functions():
     delete_kind()
@@ -107,6 +105,8 @@ def enable_function(addon):
             install_loadbalancer()
             create_dns_server()
         install_ingress()
+        if CONFIG_JSON['sso']['enabled'] == 'true':
+            create_sso_server()
 
 def disable_function(addon):
     if addon == "ingress":
@@ -117,6 +117,10 @@ def disable_function(addon):
 
     if addon == "registry":
         stop_registry()
+
+#############################################################################
+# status
+#############################################################################
 
 def import_image_function(image_name):
     load_docker_image(image_name)
@@ -143,9 +147,6 @@ Addons:
     Monitoring:
 """)
  
-
-
-
 #############################################################################
 # argparser
 #############################################################################
@@ -153,9 +154,10 @@ Addons:
 parser = argparse.ArgumentParser()
 parser.add_argument("--up", nargs='?', default=False, help="Create a new Kubernetes environment")
 parser.add_argument("--down", action="store_true", default=False, help="Destroy a Kubernetes environment")
-parser.add_argument("--status", action="store_true", default=False, help="Status of the k8s dev environment")
 parser.add_argument("--enable", action="store", default=False, help="Enable Kubernetes addon")
 parser.add_argument("--disable", action="store", default=False, help="Disable Kubernetes Addon")
+parser.add_argument("--status", action="store_true", default=False, help="Status of the k8s dev environment")
+
 parser.add_argument("--load-image", nargs=1, default=False, help="Load local docker image to kind cluster")
 parser.add_argument("--get-hosts", action="store", default=False, help="Get hosts file content")
 
@@ -164,6 +166,7 @@ args = parser.parse_args()
 # print(args) ## Debug
 
 if args.up or args.up == None:
+    print(args.up)
     if args.up == "all":
         up_functions()
         enable_function(args.up)

@@ -3,9 +3,6 @@
 import docker
 from .helepers import CONFIG_JSON, APPHOME
 
-import yaml, json, sys
-import ruamel.yaml
-
 from netaddr import IPNetwork
 
 KIND_CONFIG_PATH = APPHOME + "/config/local-registry-config.yaml"
@@ -77,25 +74,6 @@ def start_registry():
             f"{REGISTRY_FOLDER}:/var/lib/registry",
         ]
     )
-
-#    container = d.containers.get("docker_registry")
-#    network = d.networks.get("kind")
-#    registry_ip_network = network.attrs['Containers'][container.id]['IPv4Address']
-#    REGISTRY_IP = IPNetwork(registry_ip_network).ip
-#    kind_registry_config = f"""apiVersion: v1
-#kind: ConfigMap
-#metadata:
-#  name: local-registry-hosting
-#  namespace: kube-public
-#data:
-#  local_registry_hosting: |
-#    help: "https://github.com/kubernetes/enhancements/tree/master/keps/sig-cluster-lifecycle/generic/1755-communicating-a-local-registry#specification-for-localregistryhosting-v1"
-#    host: "{REGISTRY_IP}:5000"
-#    HostFromContainerRuntime: "{REGISTRY_IP}:5000"
-#"""
-#
-#    with open(KIND_CONFIG_PATH, 'w') as yaml_file:
-#        yaml_file.write(kind_registry_config)
 
 def stop_registry():
     d = docker.from_env()

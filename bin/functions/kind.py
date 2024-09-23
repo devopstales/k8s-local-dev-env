@@ -67,19 +67,35 @@ def gen_kind_config():
 - |-
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.kdev.intra:5000"]
     endpoint = ["http://registry.kdev.intra:5000"]
-  [plugins."io.containerd.grpc.v1.cri".registry.configs."{REGISTRY_IP}:5000".tls]
+  [plugins."io.containerd.grpc.v1.cri".registry.configs."registry.kdev.intra:5000".tls]
     insecure_skip_verify = true
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."{REGISTRY_IP}:5000"]
     endpoint = ["http://{REGISTRY_IP}:5000"]
   [plugins."io.containerd.grpc.v1.cri".registry.configs."{REGISTRY_IP}:5000".tls]
     insecure_skip_verify = true
 """
+        
+    if CONFIG_JSON['sso']['enabled'] == 'true':
+        kind_sso_config = f"""kubeadmConfigPatches:
+- |-
+  kind: ClusterConfiguration
+  apiServer:
+    extraArgs:
+      oidc-client-id: kind
+      oidc-issuer-url: https://keycloak.kdev.intra/auth/realms/kind-apps
+      oidc-username-claim: email
+      oidc-groups-claim: groups
+"""
+#   oidc-ca-file: /etc/ca-certificates/keycloak/root-ca.pem
+
 
     print("# Generate KIND Config")
     with open(KIND_CONFIG_PATH, 'w') as yaml_file:
         yaml.dump(kind_base_config, yaml_file, default_flow_style=False)
         if CONFIG_JSON['registry']['enabled'] == "true":
             yaml_file.write(kind_registry_config)
+        if CONFIG_JSON['sso']['enabled'] == 'true':
+            yaml_file.write(kind_sso_config)
 
 def delete_kind_config():
     NotImplemented

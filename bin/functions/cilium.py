@@ -16,6 +16,7 @@ CILIUM_CONFIG_PATH = APPHOME + "/apps/cni_cilium/cilium-values.yaml"
 CILIUM_HELMFILE_PATH = APPHOME + "/apps/cni_cilium/cilium.yaml"
 MONITORING_NS_PATH = APPHOME + "/apps/monitoring/ns.yaml"
 
+
 #############################################################################
 # Cilium Configs
 #############################################################################
@@ -80,6 +81,7 @@ def gen_cilium_config():
                 "replicas": 1,
                 "ingress": {
                     "enabled": True,
+                    "className": "default",
                     "hosts": ["cilium.kdev.intra"],
                     "tls": [
                         {
@@ -101,7 +103,7 @@ def gen_cilium_config():
             },
         },
         "operator": {
-            "replias": 1
+            "replicas": 1
         }
     }
 
@@ -293,6 +295,7 @@ def install_loadbalancer():
 
         LBPOOL_FILE_PATH =  APPHOME + "/apps/lb_cilium_l2/cilium-pool.yaml"
         ANNOUNCEMET_FILE_PATH =  APPHOME + "/apps/lb_cilium_l2/l2-announcement.yaml"
+        TEST_FILE_PATH = APPHOME + "/apps/lb_cilium_l2/lb-test.yaml"
 
         cilium_pool = {
             "apiVersion": "cilium.io/v2alpha1",
@@ -303,7 +306,7 @@ def install_loadbalancer():
             "spec": {
                 "blocks":[
                     {
-                        "cidr": f"{lb_network_subnet}"
+                        "cidr": lb_network_subnet
                     }
                 ]
             }
@@ -316,4 +319,6 @@ def install_loadbalancer():
         RUN_KUBECTL = KUBECTL_PATH + " apply -f " + LBPOOL_FILE_PATH
         run_command_stdout(RUN_KUBECTL)
         RUN_KUBECTL = KUBECTL_PATH + " apply -f " + ANNOUNCEMET_FILE_PATH
+        run_command_stdout(RUN_KUBECTL)
+        RUN_KUBECTL = KUBECTL_PATH + " apply -f " + TEST_FILE_PATH
         run_command_stdout(RUN_KUBECTL)

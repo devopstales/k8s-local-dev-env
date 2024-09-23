@@ -14,8 +14,6 @@ ROOT_KEY_PATH = APPHOME + "/.certs/kdev_rootCA.key"
 APP_PAM_PATH = APPHOME + "/.certs/kdev_app.pem"
 APP_KEY_PATH = APPHOME + "/.certs/kdev_app.key"
 APP_CERT_PATH = APPHOME + "/.certs/kdev_app.crt"
-ETCD_KEY_PATH = APPHOME + "/.certs/kdev_etcd.key"
-ETCD_CERT_PATH = APPHOME + "/.certs/kdev_etcd.crt"
 
 #############################################################################
 ## Config
@@ -47,11 +45,15 @@ if CONFIG_JSON['general']['logging'] == "DEBUG":
 
 def run_command_stdout(*args):
     result = subprocess.run(args, capture_output=True, text=True, shell=True)
+
     if result.stderr:
         print(result.stderr)
     else:
         if CONFIG_JSON['general']['logging'] == "DEBUG":
             print(result.stdout)
+
+    if result.returncode != 0:
+        exit(result.returncode)
 
 #############################################################################
 ## Dependency tests
@@ -94,9 +96,18 @@ def dependency_test(DEPENDENCIES, KERNEL_MODULES):
 def get_cert():
     check_file = os.path.isfile(ROOT_CERT_PATH)
     if not check_file:
-        ca = trustme.CA()
-        app_cert = ca.issue_cert("*.kdev.intra")
-        etcd_cert = ca.issue_cert("etcd-cluster.cluster-system.svc.cluster.local")
+        ca = trustme.CA(
+            organization_name="kdev",
+            organization_unit_name="IT",
+            path_length=0,
+            key_type=trustme.KeyType(0)
+        )
+        app_cert = ca.issue_cert(
+            "*.kdev.intra",
+            organization_name="kdev",
+            organization_unit_name="IT",
+            key_type=trustme.KeyType(0)
+        )
 
         # static files
         ca.cert_pem.write_to_path(ROOT_CERT_PATH)
@@ -105,9 +116,6 @@ def get_cert():
         app_cert.private_key_and_cert_chain_pem.write_to_path(APP_PAM_PATH)
         app_cert.cert_chain_pems[0].write_to_path(APP_CERT_PATH)
         app_cert.private_key_pem.write_to_path(APP_KEY_PATH)
-
-        etcd_cert.cert_chain_pems[0].write_to_path(ETCD_CERT_PATH)
-        etcd_cert.private_key_pem.write_to_path(ETCD_KEY_PATH)
 
         # Linux Trust
         # ca.cert_pem.write_to_path("/usr/local/share/ca-certificates/kdev_rootCA.crt")

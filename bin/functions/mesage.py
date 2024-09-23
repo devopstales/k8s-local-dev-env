@@ -14,10 +14,10 @@ from netaddr import IPNetwork
 
 def print_messages(type):
     print("#############################################################################\n#")
-    #if type == "base":
-    #    print("# Certificate Generated: Add %s to trusted Certificates\n#" % ROOT_CERT_PATH)
-
     if type == "base":
+        print("# Certificate Generated: Add %s to trusted Certificates\n#" % ROOT_CERT_PATH)
+
+    if type == "all":
         print("# Certificate Generated: Add %s to trusted Certificates\n#" % ROOT_CERT_PATH)
 
         if CONFIG_JSON['network']['loadbalancer'] == "cilium" and \

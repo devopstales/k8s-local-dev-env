@@ -9,9 +9,9 @@ controller:
     type: "LoadBalancer"
   watchIngressWithoutClass: true
   extraArgs:
-    ingress-class: "nginx"
+    ingress-class: "default"
   ingressClassResource:
-    name: nginx
+    name: default
     enabled: true
     default: true
     controllerValue: "k8s.io/ingress-nginx"
