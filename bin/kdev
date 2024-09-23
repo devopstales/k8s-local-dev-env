@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
-import argparse
+import argparse, platform
 
-from functions.helepers import CONFIG_JSON, \
-    dependency_test, manage_cert
+from functions.helepers import CONFIG_JSON, manage_cert
 
 from functions.mesage import \
     print_messages
@@ -22,6 +21,9 @@ from functions.cilium import \
 
 from functions.dns import \
     create_dns_server
+
+from functions.sso import \
+    create_sso_server
 
 from functions.ingress import \
     install_ingress, remove_ingress, \
@@ -47,10 +49,13 @@ colorama_init()
 def up_functions():
     # Generate cert
     manage_cert()
-    dependency_test(DEPENDENCIES, KERNEL_MODULES)
+    if platform.system() != 'Darwin':
+        from functions.helepers import dependency_test
+        dependency_test(DEPENDENCIES, KERNEL_MODULES)
     create_docker_network()
     gen_kind_config()
     start_kind()
+    create_sso_server()
     #deploy_crds() # anmespaces, crds for: prometheus, gatewayApi, cert-manager, etc
 
 def down_functions():
@@ -73,7 +78,7 @@ def enable_function(addon):
     if addon == "cert-manager":
         install_cert_manager()
 
-    if addon == "coredns":
+    if addon == "dns":
         if CONFIG_JSON['network']['loadbalancer'] == "cilium":
             create_dns_server()
 

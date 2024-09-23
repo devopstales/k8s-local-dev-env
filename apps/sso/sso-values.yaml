@@ -1,0 +1,25 @@
+auth:
+  createAdminUser: true
+  adminUser: admin
+  adminPassword: admin
+  managementUser: manager
+  managementPassword: manager
+proxyAddressForwarding: true
+ingress:
+  enabled: true
+  hostname: keycloak.kdev.intra
+  annotations:
+    kubernetes.io/ingress.class: nginx
+  tls: true
+  extraTls:
+  - hosts:
+    - keycloak.kdev.intra
+    secretName: keycloak-tls
+postgresql:
+  enabled: false
+  postgresqlPassword: password
+externalDatabase:
+  host: "none"
+extraEnvVars:
+  - name: KEYCLOAK_DATABASE_VENDOR
+    value: "dev-file"

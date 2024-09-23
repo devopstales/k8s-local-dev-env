@@ -21,7 +21,7 @@ A píthon based script that starts a local kind based Kubernetes Developmant env
 
 ## Required packages
 
-Ubuntu 20.04 as example...
+### Ubuntu 20.04
 
 ```bash
 apt update
@@ -36,6 +36,18 @@ pip3 install -r requirements.txt
 * kubectl
 * helm
 * helmfile
+
+### OSX
+
+```bash
+brew install autoconf automake libtool
+brew install chipmk/tap/docker-mac-net-connect
+sudo brew services start chipmk/tap/docker-mac-net-connect
+
+pip3 install -r requirements.txt
+```
+
+Start docker dasktop
 
 ## Required Kernel modules:
 

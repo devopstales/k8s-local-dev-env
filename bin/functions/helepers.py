@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
+import platform
 import configparser, json
-
 import shutil
-import kmodule
 import os, trustme, subprocess
 
 from pathlib import Path
 
 HOME = str(Path.home())
-APPHOME = HOME + "/k8s-local-dev-env2"
+APPHOME = HOME + "/k8s-local-dev-env"
 ROOT_CERT_PATH = APPHOME + "/.certs/kdev_rootCA.crt"
 ROOT_KEY_PATH = APPHOME + "/.certs/kdev_rootCA.key"
 APP_PAM_PATH = APPHOME + "/.certs/kdev_app.pem"
@@ -68,17 +67,19 @@ def which(program):
         return path
 
 def kernel_dodule_test(modules):
-    mlist = kmodule.lsmod ()
-    for m in modules:
-        is_module = False
+    if platform.system() != 'Darwin':
+        import kmodule
+        mlist = kmodule.lsmod ()
+        for m in modules:
+            is_module = False
 
-        for m, v in mlist.items ():
-            if v.name == m:
-                is_module = True
-        
-        if not is_module:
-            kmodule.insmod (m)
-    print("# Kernel modules are loaded")
+            for m, v in mlist.items ():
+                if v.name == m:
+                    is_module = True
+
+            if not is_module:
+                kmodule.insmod (m)
+        print("# Kernel modules are loaded")
 
 def dependency_test(DEPENDENCIES, KERNEL_MODULES):
     for BIN in DEPENDENCIES:

@@ -6,5 +6,7 @@ __pycache__
 
 apps/lb_cilium_l2/cilium-pool.yaml
 
+venv/**
+!venv/.gitkeep
 tmp
 TODO.md
