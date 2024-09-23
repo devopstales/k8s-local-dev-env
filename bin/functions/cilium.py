@@ -105,6 +105,22 @@ def gen_cilium_config():
         }
     }
 
+    if CONFIG_JSON['network']["mtls"] == "true":
+        cilium_base_config.update(
+            {
+                "authentication": {
+                    "mutual": {
+                        "spire": {
+                             "enabled": True,
+                             "install": {
+                                 "enabled": True,
+                             }
+                        }
+                    }
+                }
+            }
+        )
+
     if CONFIG_JSON['monitoring']["enabled"] == "true":
         cilium_base_config['hubble']['metrics'].update({"serviceMonitor": {"enabled": True}})
         cilium_base_config['hubble']['metrics'].update(

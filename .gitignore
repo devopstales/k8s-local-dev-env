@@ -5,6 +5,7 @@ __pycache__
 .certs/*.crt
 
 apps/lb_cilium_l2/cilium-pool.yaml
+apps/cni_cilium/cilium-values.yaml
 
 venv/**
 !venv/.gitkeep
