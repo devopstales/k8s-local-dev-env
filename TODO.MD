@@ -71,3 +71,4 @@ PushProx ???
     * https://artifacthub.io/packages/helm/helm-spire/spire
   * SPIRE
   * https://cert-manager.io/docs/usage/csi-driver-spiffe/
+  * https://docs.cilium.io/en/stable/network/servicemesh/mutual-authentication/mutual-authentication-example/
