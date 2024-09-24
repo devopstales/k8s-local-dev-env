@@ -16,11 +16,14 @@ ingress:
   - hosts:
     - keycloak.kdev.intra
     secretName: keycloak-ingress-tls
+cache:
+  enabled: false
 postgresql:
   enabled: false
   postgresqlPassword: password
 externalDatabase:
   host: "none"
+  password: "none"
 extraEnvVars:
   - name: KEYCLOAK_DATABASE_VENDOR
     value: "dev-file"

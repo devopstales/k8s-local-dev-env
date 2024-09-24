@@ -7,6 +7,7 @@ from .helepers import (
     APPHOME,
     ROOT_CERT_PATH,
     ROOT_KEY_PATH,
+    ROOT_PAM_PATH
 )
 
 #############################################################################
@@ -17,7 +18,10 @@ INGRESS_TYPE = CONFIG_JSON['ingress']['driver']
 if INGRESS_TYPE == "nginx":
     INGRESS_HELMFILE_PATH = APPHOME + "/apps/ingress_nginx/nginx.yaml"
 elif INGRESS_TYPE == "pomerium":
-    INGRESS_HELMFILE_PATH = APPHOME + "/apps/ingress_pomerium/pomerium.yaml"
+    if CONFIG_JSON['sso']['enabled'] != "true":
+        INGRESS_HELMFILE_PATH = APPHOME + "/apps/ingress_nginx/nginx.yaml"
+    else:
+        INGRESS_HELMFILE_PATH = APPHOME + "/apps/ingress_pomerium/pomerium.yaml"
 
 if CONFIG_JSON['network']['loadbalancer'] == "cilium":
     if CONFIG_JSON['monitoring']['enabled'] == "true":
@@ -51,6 +55,9 @@ else:
 
 def install_ingress():
     if INGRESS_TYPE == "nginx" or INGRESS_TYPE == "pomerium":
+        if CONFIG_JSON['sso']['enabled'] != "true":
+            print("# SSO is not enabled. Installing Nginx Ingress controller")
+ 
         HELMFILE_PATH = which("helmfile")
         RUN_COMMAND = HELMFILE_PATH + " apply -f " + INGRESS_HELMFILE_PATH + " -l " + INGRES_TYPE
         print("# Install Ingress Controller")
@@ -75,6 +82,8 @@ def install_cert_manager():
 
     KUBECTL_PATH = which("kubectl")
     RUN_KUBECTL = KUBECTL_PATH + f" create secret tls ca-key-pair --cert={ROOT_CERT_PATH} --key={ROOT_KEY_PATH} -n ingress-system"
+    run_command_stdout(RUN_KUBECTL)
+    RUN_KUBECTL = KUBECTL_PATH + f" create secret generic ca-pam --from-file=ca.crt={ROOT_CERT_PATH} --from-file=ca.key={ROOT_KEY_PATH} --from-file=ca.pem={ROOT_PAM_PATH} -n ingress-system"
     run_command_stdout(RUN_KUBECTL)
     RUN_KUBECTL = KUBECTL_PATH + " apply -n ingress-system -f " + ISSUER_PATH
     run_command_stdout(RUN_KUBECTL)

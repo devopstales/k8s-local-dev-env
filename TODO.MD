@@ -7,31 +7,25 @@
 sudo ip route add 10.0.0.0/16 via 172.18.0.2
 
 # BGP ?
+docker run --rm -itd --privileged --network kind --name bird_router pierky/bird:2.15
+
+# cloud provider
+# https://console.cloud.google.com/gcr/images/k8s-staging-kind/GLOBAL/cloud-provider-kind
+docker run --rm -itd --network kind -v /var/run/docker.sock:/var/run/docker.sock --name cloud-provider-kind gcr.io/k8s-staging-kind/cloud-provider-kind:v20240917-31dac43
+
+docker um -itd cloud-provider-kind
 ```
-
-## Auth
-
-https://medium.com/@charled.breteche/kind-keycloak-securing-kubernetes-api-server-with-oidc-371c5faef902
 
 ## Monitoring
 
-```bash
-PushProx ???
-```
+* https://medium.com/@giorgiodevops/kind-install-prometheus-operator-and-fix-missing-targets-b4e57bcbcb1f
+* https://medium.com/@charled.breteche/securing-grafana-with-keycloak-sso-d01fec05d984
+* https://medium.com/@charled.breteche/kind-fix-missing-prometheus-operator-targets-1a1ff5d8c8ad
+* PushProx
 
 ## Docs
 
-* https://medium.com/@charled.breteche/securing-grafana-with-keycloak-sso-d01fec05d984
-* https://medium.com/@charled.breteche/kind-fix-missing-prometheus-operator-targets-1a1ff5d8c8ad
 * https://particule.io/en/blog/k8s-no-cloud/
-* https://medium.com/@charled.breteche/kind-cluster-with-cilium-and-no-kube-proxy-c6f4d84b5a9d
-* https://medium.com/@charled.breteche/kind-cilium-metallb-and-no-kube-proxy-a9fe66ddfad6
-* https://medium.com/@charled.breteche/using-dnsmasq-with-a-local-kind-clusters-9a27c8987073
-* registry
-  * https://kind.sigs.k8s.io/docs/user/local-registry/
-  * https://medium.com/@charled.breteche/caching-docker-images-for-local-kind-clusters-252fac5434aa
-  * https://maelvls.dev/docker-proxy-registry-kind/
-
 
 ## Future
 
@@ -42,15 +36,11 @@ PushProx ???
   * https://cert-manager.io/docs/usage/csi-driver-spiffe/
   * https://docs.cilium.io/en/stable/network/servicemesh/mutual-authentication/mutual-authentication-example/
 
-## Bugs
+## SSO:
 
-* cilium operator number [-]
-* loadbalancer pool as string in double quots [?]
-* loadbalancer static ip
-* keycloak auto import realm [-]
-* keycloak ingress certificate [-]
-* keycloak monitoring [-]
-
-
-8ZFWQojAUwIsgMWp8taYAuHkWutjP4fU
-GZrYHf64WZWKBxnB0f2h6xlFwZOZJXyL
+```bash
+pomerium: y5q5jeEpEmL7aJh74Tgsb32aJz1LaKAh
+kind:     1Y1BDvwweUiVL89VFePBe5zSMIpI54NM
+grafana:  blLT7cqamLqR9CriDn40gDhChgtRkT4F
+kubedash: nkBeJzvrBxzRfGNDJENrEvwtnqczGLzk
+```

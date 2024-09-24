@@ -1,9 +1,9 @@
 authenticate:
   idp:
     provider: "oidc"
-    url: ""
-    clientID: "4af1fe3b73b43eaf9f9e"
-    clientSecret: "4c32abcb6b6665cf45c0c71255a6f4b405123888"
+    url: "https://keycloak.kdev.intra/realms/kind-apps"
+    clientID: "pomerium"
+    clientSecret: "y5q5jeEpEmL7aJh74Tgsb32aJz1LaKAh"
     serviceAccount: "pomerium-authenticate"
   ingress:
     annotations:
@@ -22,5 +22,9 @@ ingressController:
 config:
   rootDomain: kdev.intra #Change this to your reserved domain space.
   generateTLS: true # On by default, disabled when cert-manager or another solution is in place.
+  existingCASecret: "ca-pem"
 ingress:
   enabled: false
+proxy:
+  service:
+    type: "LoadBalancer"

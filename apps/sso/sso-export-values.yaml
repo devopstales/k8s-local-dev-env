@@ -1,0 +1,51 @@
+auth:
+  createAdminUser: true
+  adminUser: admin
+  adminPassword: admin
+  managementUser: manager
+  managementPassword: manager
+proxyAddressForwarding: true
+ingress:
+  enabled: true
+  ingressClassName: "default"
+  hostname: keycloak.kdev.intra
+  annotations:
+    cert-manager.io/cluster-issuer: ca-issuer
+  tls: true
+  extraTls:
+  - hosts:
+    - keycloak.kdev.intra
+    secretName: keycloak-ingress-tls
+cache:
+  enabled: false
+postgresql:
+  enabled: true
+extraEnvVars:
+  - name: KEYCLOAK_EXTRA_ARGS
+    value: "--import-realm"
+  - name: POSTGRES_USER
+    value: bn_keycloak
+  - name: POSTGRES_POSTGRES_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        key: postgres-password
+        name: keycloak-postgresql
+  - name: POSTGRES_PASSWORD
+    valueFrom:
+      secretKeyRef:
+        key: password
+        name: keycloak-postgresql
+extraVolumeMounts:
+- name: config-volume
+  mountPath: /opt/bitnami/keycloak/data/import/realm.json
+  subPath: realm.json
+extraVolumes:
+- name: config-volume
+  configMap:
+    name: keycloak-realm-config
+########################################################################
+# Export command:
+# kubectl exec -it keycloak-0 -- /bin/bash -c "/opt/bitnami/keycloak/bin/kc.sh export --file=/tmp/realm.json --realm=kind-apps"
+# kubectl cp keycloak-0:/tmp/realm.json ~/k8s-local-dev-env/realm.json
+# cat ~/k8s-local-dev-env/realm.json >> ~/k8s-local-dev-env/apps/sso/ns.yaml
+########################################################################

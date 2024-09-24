@@ -1,6 +1,6 @@
 # k8s-local-dev-env
 
-A píthon based script that starts a local kind based Kubernetes Developmant environment and Install apps.
+A python based script that starts a local kind based Kubernetes Development environment and Install apps.
 
 ## Features
 
@@ -8,16 +8,26 @@ A píthon based script that starts a local kind based Kubernetes Developmant env
 * Start kind Cluster
   * Import image to kind cluster
   * Run a separate dns server for ingress dns resolution
-    * coredns and external-dns
+    * CoreDNS and external-dns
+  * OpenID Authentication
 * Start apps
   * Cilium CNI
   * LoadBalancer
-    * Cilium L2 loadbalancer
+    * Cilium L2 LoadBalancer
   * Cert-Manager
     * Generate certs under self signed CA
-  * Nginx INgress Controller
-    * Nodeport
-    * loadbalancer
+  * Ingress Controller
+    * Nginx
+      * Node port
+      * LoadBalancer
+    * Pomerium
+      * Node port
+      * LoadBalancer
+      * OpenID Authentication
+    * Clium Nginx
+    * Cilium Gateway API
+  * Keycloak
+    * OpenID Authentication Provider
 
 ## Required packages
 

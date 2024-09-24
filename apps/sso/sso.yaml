@@ -17,3 +17,10 @@ releases:
     environment: monitoring
   values:
    - sso-m-values.yaml
+- name: keycloak
+  namespace: auth-system
+  chart: bitnami/keycloak
+  labels:
+    environment: export
+  values:
+   - sso-export-values.yaml

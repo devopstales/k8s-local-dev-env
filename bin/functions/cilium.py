@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import yaml
+import docker
 
 from .helepers import (
     which,
@@ -108,6 +109,7 @@ def gen_cilium_config():
     }
 
     if CONFIG_JSON['network']["mtls"] == "true":
+        #                     "mode": "required",
         cilium_base_config.update(
             {
                 "authentication": {
@@ -202,7 +204,7 @@ def gen_cilium_config():
             {
                 'annotations': {
                     "cert-manager.io/cluster-issuer": "ca-issuer",
-                    "ingress.pomerium.io/allow_any_authenticated_user": True,
+                    "ingress.pomerium.io/allow_public_unauthenticated_access": "true",
                 }
             }
         )
@@ -235,23 +237,6 @@ def gen_cilium_config():
                     },
                 }
             )
-
-    if CONFIG_JSON['network']['mtls'] == 'true':
-        cilium_base_config.update(
-            {
-                "authentication": {
-                    "mode": "required",
-                    "mutual": {
-                        "spire": {
-                            "enabled": False,
-                            "install": {
-                                "enabled": False
-                            }
-                        }
-                    }
-                }
-            }
-        )
 
     if CONFIG_JSON['ingress']['driver'] == "cilium":
         cilium_base_config.update(
@@ -287,38 +272,39 @@ def install_cilium():
 
 def install_loadbalancer():
     print("# Install LoadBalancer")
-    if CONFIG_JSON['network']['loadbalancer_mode'] == "l2":
-        network_data = get_docker_network("kind")
-        docker_network_subnet = network_data["IPAM"]['Config'][0]['Subnet']
-        network_subnets = list(ip_network(docker_network_subnet).subnets(new_prefix=24))
-        lb_network_subnet = str(network_subnets[-1])
+    if CONFIG_JSON['network']['loadbalancer'] == "cilium":
+        if CONFIG_JSON['network']['loadbalancer_mode'] == "l2":
+            network_data = get_docker_network("kind")
+            docker_network_subnet = network_data["IPAM"]['Config'][0]['Subnet']
+            network_subnets = list(ip_network(docker_network_subnet).subnets(new_prefix=24))
+            lb_network_subnet = str(network_subnets[-1])
 
-        LBPOOL_FILE_PATH =  APPHOME + "/apps/lb_cilium_l2/cilium-pool.yaml"
-        ANNOUNCEMET_FILE_PATH =  APPHOME + "/apps/lb_cilium_l2/l2-announcement.yaml"
-        TEST_FILE_PATH = APPHOME + "/apps/lb_cilium_l2/lb-test.yaml"
+            LBPOOL_FILE_PATH =  APPHOME + "/apps/lb_cilium_l2/cilium-pool.yaml"
+            ANNOUNCEMET_FILE_PATH =  APPHOME + "/apps/lb_cilium_l2/l2-announcement.yaml"
+            TEST_FILE_PATH = APPHOME + "/apps/lb_cilium_l2/lb-test.yaml"
 
-        cilium_pool = {
-            "apiVersion": "cilium.io/v2alpha1",
-            "kind": "CiliumLoadBalancerIPPool",
-            "metadata":{
-                "name": "kind-pool",
-            },
-            "spec": {
-                "blocks":[
-                    {
-                        "cidr": lb_network_subnet
-                    }
-                ]
+            cilium_pool = {
+                "apiVersion": "cilium.io/v2alpha1",
+                "kind": "CiliumLoadBalancerIPPool",
+                "metadata":{
+                    "name": "kind-pool",
+                },
+                "spec": {
+                    "blocks":[
+                        {
+                            "cidr": lb_network_subnet
+                        }
+                    ]
+                }
             }
-        }
 
-        with open(LBPOOL_FILE_PATH, 'w') as yaml_file:
-            yaml.dump(cilium_pool, yaml_file, default_flow_style=False)
+            with open(LBPOOL_FILE_PATH, 'w') as yaml_file:
+                yaml.dump(cilium_pool, yaml_file, default_flow_style=False)
 
-        KUBECTL_PATH = which("kubectl")
-        RUN_KUBECTL = KUBECTL_PATH + " apply -f " + LBPOOL_FILE_PATH
-        run_command_stdout(RUN_KUBECTL)
-        RUN_KUBECTL = KUBECTL_PATH + " apply -f " + ANNOUNCEMET_FILE_PATH
-        run_command_stdout(RUN_KUBECTL)
-        RUN_KUBECTL = KUBECTL_PATH + " apply -f " + TEST_FILE_PATH
-        run_command_stdout(RUN_KUBECTL)
+            KUBECTL_PATH = which("kubectl")
+            RUN_KUBECTL = KUBECTL_PATH + " apply -f " + LBPOOL_FILE_PATH
+            run_command_stdout(RUN_KUBECTL)
+            RUN_KUBECTL = KUBECTL_PATH + " apply -f " + ANNOUNCEMET_FILE_PATH
+            run_command_stdout(RUN_KUBECTL)
+            RUN_KUBECTL = KUBECTL_PATH + " apply -f " + TEST_FILE_PATH
+            run_command_stdout(RUN_KUBECTL)

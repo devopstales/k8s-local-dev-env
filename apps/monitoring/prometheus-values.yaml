@@ -1,0 +1,324 @@
+global:
+  rbac:
+    create: true
+crds:
+  enabled: false
+prometheusOperator:
+  enabled: true
+  networkPolicy:
+    enabled: true
+kubeStateMetrics:
+  enabled: true
+  networkPolicy:
+    enabled: true
+alertmanager:
+  alertmanagerSpec:
+    storage:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 5Gi
+  ingress:
+    enabled: true
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-buffer-size: 16k
+      cert-manager.io/cluster-issuer: ca-issuer
+      ingress.pomerium.io/allow_any_authenticated_user: "true"
+    hosts:
+      - alertmanager.kdev.intra
+    paths:
+    - /
+    pathType: ImplementationSpecific
+    tls:
+    - secretName: alertmanager-ingress-tls
+      hosts:
+      - alertmanager.kdev.intra
+
+grafana:
+  defaultDashboardsTimezone: CET
+  rbac:
+    enable: true
+    pspUseAppArmor: false
+  networkPolicy:
+    limitIngress: true
+    limitEgress: false
+  initChownData:
+    enabled: false
+  enabled: true
+  admin:
+    existingSecret: "grafana-user-secret"
+    userKey: admin-user
+    passwordKey: admin-password
+  persistence:
+    enabled: true
+    size: 5Gi
+  plugins:
+  - grafana-piechart-panel
+  - isovalent-hubbleprocessancestry-panel
+  - isovalent-hubble-datasource
+  - hamedkarbasi93-nodegraphapi-datasource
+  - marcusolsson-json-datasource
+  - marcusolsson-dynamictext-panel
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      - name: Loki
+        type: loki
+        url: http://loki.logging-system:3100
+        access: proxy
+        basicAuth: false
+        editable: true
+        orgId: 1
+        version: 2
+        jsonData:
+            derivedFields:
+              - datasourceUid: tempo
+                matcherRegex: '"trace_id": "(\w+)"'
+                name: TraceID
+                url: $${__value.raw}
+            maxLines: 1000
+      - name: Tempo
+        type: tempo
+        uid: tempo
+        access: browser
+        url: http://tempo.observability-system:3100
+        version: 1
+        editable: true
+        basicAuth: false
+      - name: "Node Graph API"
+        jsonData:
+          url: "http://k8spacket.observability-system:8080/nodegraph"
+        access: "proxy"
+        basicAuth: false
+        isDefault: false
+        readOnly: false
+        type: "hamedkarbasi93-nodegraphapi-datasource"
+        typeLogoUrl: "public/plugins/hamedkarbasi93-nodegraphapi-datasource/img/logo.svg"
+        typeName: "node-graph-plugin"
+        orgId: 1
+        version: 1
+      - name: "JSON API"
+        url: "http://k8spacket.observability-system:8080/tlsparser/api/data"
+        access: "proxy"
+        basicAuth: false
+        isDefault: false
+        readOnly: false
+        type: "marcusolsson-json-datasource"
+        typeLogoUrl: "public/plugins/marcusolsson-json-datasource/img/logo.svg"
+        typeName: "json-api-plugin"
+        orgId: 1
+        version: 1
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+      - name: 'grafana-dashboards-kubernetes'
+        orgId: 1
+        folder: 'Kubernetes'
+        type: file
+        disableDeletion: true
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/grafana-dashboards-kubernetes
+      - name: 'ingress'
+        orgId: 1
+        folder: 'ingress'
+        type: file
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/ingress
+      - name: 'kyverno'
+        orgId: 1
+        folder: 'kyverno'
+        type: file
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/kyverno
+      - name: 'cilium'
+        orgId: 1
+        folder: 'cilium'
+        type: file
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/cilium
+      - name: 'loki'
+        orgId: 1
+        folder: 'loki'
+        type: file
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/loki
+      - name: 'k8spacket'
+        orgId: 1
+        folder: 'k8spacket'
+        type: file
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/k8spacket
+  dashboards:
+    grafana-dashboards-kubernetes:
+      k8s-system-api-server:
+        url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-system-api-server.json
+        token: ''
+      k8s-system-coredns:
+        url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-system-coredns.json
+        token: ''
+      k8s-views-global:
+        url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-global.json
+        token: ''
+      k8s-views-namespaces:
+        url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-namespaces.json
+        token: ''
+      k8s-views-nodes:
+        url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-nodes.json
+        token: ''
+      k8s-views-pods:
+        url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-pods.json
+        token: ''
+    kyverno:
+    k8spacket:
+    cilium:
+      cilium1:
+        gnetId: 6658
+        datasource: Prometheus
+      cilium-agent:
+        gnetId: 16611
+        datasource: Prometheus
+      cilium-operator:
+        gnetId: 16612
+        datasource: Prometheus
+      hubble:
+        gnetId: 16613
+        datasource: Prometheus
+      cilium-policies:
+        gnetId: 18015
+        datasource:
+          - name: DS_PROMETHEUS
+            value: prometheus
+    ingress:
+      nginx-ingress:
+        gnetId: 9614
+        datasource: Prometheus
+      nginx-connections:
+        gnetId: 9512
+        datasource: Prometheus
+      nginx:
+        gnetId: 6927
+        datasource: Prometheus
+      nginx-netwgen:
+        gnetId: 14314
+        datasource: Prometheus
+      network-ingress:
+        gnetId: 16677
+        datasource: Prometheus
+      kubernetes-ingress-controller-dashboard:
+        gnetId: 12575
+        datasource: Prometheus
+      cert-manager:
+        gnetId: 11001
+        datasource: Prometheus
+      certificate-expiration:
+        gnetId: 13922
+        datasource: Prometheus
+      cert-exporter:
+        gnetId: 12170
+        datasource: Prometheus
+    loki:
+      loki1:
+        gnetId: 12611
+        datasource: Loki
+      LogsApp:
+        gnetId: 13639
+        datasource: Loki
+      LokiKubernetesLogs:
+        gnetId: 15141
+        datasource: Loki
+  grafana.ini:
+    security:
+      disable_gravatar: true
+    server:
+      domain: grafana.kdev.intra
+      root_url: "%(protocol)s://%(domain)s"
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      folderAnnotation: grafana_folder
+      provider:
+        foldersFromFilesStructure: true
+  ingress:
+    enabled: true
+    annotations:
+      cert-manager.io/cluster-issuer: ca-issuer
+    hosts:
+      - grafana.kdev.intra
+    paths:
+    - /
+    pathType: ImplementationSpecific
+    tls:
+    - secretName: grafana-ingress-tls
+      hosts:
+      - grafana.kdev.intra
+
+prometheus:
+  enabled: true
+  prometheusSpec:
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelectorNilUsesHelmValues: false
+    enableFeatures:
+      - extra-scrape-metrics
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          resources:
+            requests:
+              storage: 5Gi
+  ingress:
+    enabled: true
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-buffer-size: 16k
+      cert-manager.io/cluster-issuer: ca-issuer
+      ingress.pomerium.io/allow_any_authenticated_user: "true"
+    hosts:
+      - prometheus.kdev.intra
+    paths:
+    - /
+    pathType: ImplementationSpecific
+    tls:
+    - secretName: prometheus-ingress-tls
+      hosts:
+      - prometheus.kdev.intra
+  networkPolicy:
+    enabled: true
+
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+kubeEtcd:
+  enabled: true
+  service:
+    port: 2379
+    targetPort: 2379
+    selector:
+      component: etcd
+  serviceMonitor:
+    interval: ""
+    scheme: https
+    insecureSkipVerify: true
+    serverName: ""
+    metricRelabelings: []
+    relabelings: []
+

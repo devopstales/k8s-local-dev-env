@@ -104,9 +104,9 @@ def enable_function(addon):
         if CONFIG_JSON['network']['loadbalancer'] == "cilium":
             install_loadbalancer()
             create_dns_server()
-        install_ingress()
         if CONFIG_JSON['sso']['enabled'] == 'true':
             create_sso_server()
+        install_ingress()
 
 def disable_function(addon):
     if addon == "ingress":
@@ -166,7 +166,6 @@ args = parser.parse_args()
 # print(args) ## Debug
 
 if args.up or args.up == None:
-    print(args.up)
     if args.up == "all":
         up_functions()
         enable_function(args.up)
