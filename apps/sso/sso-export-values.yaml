@@ -11,6 +11,7 @@ ingress:
   hostname: keycloak.kdev.intra
   annotations:
     cert-manager.io/cluster-issuer: ca-issuer
+    ingress.pomerium.io/allow_public_unauthenticated_access: "true"
   tls: true
   extraTls:
   - hosts:

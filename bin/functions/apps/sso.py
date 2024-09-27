@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-from .helepers import (
+from ..helepers import (
     which,
     run_command_stdout, 
     APPHOME,

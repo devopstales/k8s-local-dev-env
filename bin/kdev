@@ -4,7 +4,7 @@ import argparse, platform
 
 from functions.helepers import CONFIG_JSON, manage_cert
 
-from functions.mesage import \
+from functions.message import \
     print_messages
     
 from functions.docker import \
@@ -22,12 +22,19 @@ from functions.cilium import \
 from functions.dns import \
     create_dns_server
 
-from functions.sso import \
-    create_sso_server
-
 from functions.ingress import \
     install_ingress, remove_ingress, \
     install_cert_manager, remove_cert_manager
+
+#############################################################################
+# Apps
+#############################################################################
+
+from functions.apps.crd import deploy_crds
+from functions.apps.monitoring import \
+    deploy_prometheus
+from functions.apps.sso import \
+    create_sso_server
 
 #############################################################################
 # Variables
@@ -57,7 +64,7 @@ def up_functions():
         start_registry()
     gen_kind_config()
     start_kind()
-    #deploy_crds() # anmespaces, crds for: prometheus, gatewayApi, cert-manager, etc
+    deploy_crds() # anmespaces, crds for: prometheus, gatewayApi, cert-manager, etc
 
 def down_functions():
     delete_kind()
@@ -67,6 +74,9 @@ def down_functions():
     delete_docker_network()
 
 def enable_function(addon):
+    if addon == "certificate":
+        manage_cert()
+
     if addon == "registry":
         start_registry()
 

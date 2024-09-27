@@ -1,0 +1,37 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: pomerium-cert
+  namespace: ingress-system
+spec:
+  secretName: pomerium-tls
+  issuerRef:
+    name: ca-issuer
+    kind: ClusterIssuer
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+    - pomerium-proxy.ingress-system.svc.cluster.local
+    - pomerium-authorize.ingress-system.svc.cluster.local
+    - pomerium-databroker.ingress-system.svc.cluster.local
+    - pomerium-authenticate.ingress-system.svc.cluster.local
+#---
+#apiVersion: cert-manager.io/v1
+#kind: Certificate
+#metadata:
+#  name: pomerium-redis-cert
+#  namespace: pomerium
+#spec:
+#  secretName: pomerium-redis-tls
+#  issuerRef:
+#    name: ca-issuer
+#    kind: ClusterIssuer
+#  usages:
+#    - server auth
+#    - client auth
+#  dnsNames:
+#    - pomerium-redis-master.pomerium.svc.cluster.local
+#    - pomerium-redis-headless.pomerium.svc.cluster.local
+#    - pomerium-redis-replicas.pomerium.svc.cluster.local

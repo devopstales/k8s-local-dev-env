@@ -1,0 +1,88 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: add-java-truststore
+  annotations:
+    policies.kyverno.io/title: Add Certificates to java truststore
+    policies.kyverno.io/category: Sample
+    policies.kyverno.io/subject: Pod,Volume
+    kyverno.io/kyverno-version: 1.5.2
+    kyverno.io/kubernetes-version: "1.21"
+    policies.kyverno.io/minversion: 1.5.0
+    pod-policies.kyverno.io/autogen-controllers: DaemonSet,Deployment,Job,StatefulSet
+    policies.kyverno.io/description: >-
+      In some cases you would need to trust custom CA certificates for all the containers of a Pod.
+      This policy adds the CA to jour java truststore.
+spec:
+  background: false
+  rules:
+  - name: add-ssl-certs-to-java
+    match:
+      resources:
+        kinds:
+        - Pod
+    preconditions:
+      all:
+      - key: '{{request.object.metadata.annotations."inject-certs-to-java"}}'
+        operator: Equals
+        value: enabled
+      - key: "{{request.operation || 'BACKGROUND'}}"
+        operator: AnyIn
+        value:
+          - CREATE
+          - UPDATE
+    mutate:
+      patchStrategicMerge:
+        spec:
+          initContainers:
+            - name: init-truststore
+              image: adoptopenjdk/openjdk11-openj9:x86_64-ubuntu-jdk-11.0.11_9_openj9-0.26.0@sha256:a573dc91d6606a7df4b7b038c9c6b95aaae9695faa999de871d6644f31f5bb9e
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: ca_bundle
+                  valueFrom:
+                    secretKeyRef:
+                      key: ca.crt
+                      name: ca-key-pair
+                - name: cacerts
+                  value: /opt/data/truststore/cacerts
+              command: ["/bin/sh"]
+              args:
+                - "-c"
+                - "rm -f $cacerts && echo \"$ca_bundle\" > mt_ca && keytool -importkeystore -noprompt -srckeystore $JAVA_HOME/lib/security/cacerts -srcstoretype JKS -destkeystore $cacerts -storepass changeit -srcstorepass changeit &&  csplit -z -f crt- mt_ca '/-----BEGIN CERTIFICATE-----/' '{*}' && for file in crt-*; do keytool -import -noprompt -keystore $cacerts -file $file -storepass changeit -alias service-$file; done"
+              volumeMounts:
+                - mountPath: /opt/data/truststore
+                  name: keystore-volume
+          volumes:
+            - name: keystore-volume
+              emptyDir: {}
+  - name: add-ssl-certs-as-volume
+    match:
+      resources:
+        kinds:
+        - Pod
+    preconditions:
+      all:
+      - key: '{{request.object.metadata.annotations."inject-certs"}}'
+        operator: Equals
+        value: enabled
+      - key: "{{request.operation || 'BACKGROUND'}}"
+        operator: AnyIn
+        value:
+          - CREATE
+          - UPDATE
+    mutate:
+      foreach:
+      - list: "request.object.spec.containers"
+        patchStrategicMerge:
+          spec:
+            containers:
+            - name: "{{ element.name }}"
+              volumeMounts:
+              - name: etc-ssl-certs
+                mountPath: /etc/ssl/certs
+            volumes:
+            - name: etc-ssl-certs
+              secretKeyRef:
+                key: ca.crt
+                name: ca-key-pair

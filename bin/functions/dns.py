@@ -24,5 +24,3 @@ def create_dns_server():
 
     RUN_COMMAND = HELMFILE_PATH + "  apply -f  " + APPHOME + "/apps/cluster_system/external-dns.yaml"
     run_command_stdout(RUN_COMMAND)
-
- 

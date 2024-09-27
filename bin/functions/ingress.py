@@ -6,8 +6,7 @@ from .helepers import (
     CONFIG_JSON, 
     APPHOME,
     ROOT_CERT_PATH,
-    ROOT_KEY_PATH,
-    ROOT_PAM_PATH
+    ROOT_KEY_PATH
 )
 
 #############################################################################
@@ -34,8 +33,12 @@ else:
     else:
         INGRES_TYPE="environment=nodeport"
 
+POMERIUM_ISSUER_PATH = APPHOME + "/apps/ingress_pomerium/pomerium-cert.yaml"
+
 
 CM_HELMFILE_PATH =  APPHOME + "/apps/cert_manager/cert_manager.yaml"
+REFLECTOR_HELMFILE_PATH = APPHOME + "/apps/cluster_system/reflector.yaml"
+
 ISSUER_PATH = APPHOME + "/apps/cert_manager/cert_manager-issuer.yaml"
 if CONFIG_JSON['monitoring']['enabled'] == "true":
     if CONFIG_JSON['ingress']['apigateway'] == "none":
@@ -57,6 +60,10 @@ def install_ingress():
     if INGRESS_TYPE == "nginx" or INGRESS_TYPE == "pomerium":
         if CONFIG_JSON['sso']['enabled'] != "true":
             print("# SSO is not enabled. Installing Nginx Ingress controller")
+
+        KUBECTL_PATH = which("kubectl")
+        RUN_KUBECTL = KUBECTL_PATH + f" apply -f " + POMERIUM_ISSUER_PATH
+        run_command_stdout(RUN_KUBECTL)
  
         HELMFILE_PATH = which("helmfile")
         RUN_COMMAND = HELMFILE_PATH + " apply -f " + INGRESS_HELMFILE_PATH + " -l " + INGRES_TYPE
@@ -80,13 +87,19 @@ def install_cert_manager():
     print("# Install cert-manager")
     run_command_stdout(RUN_COMMAND)
 
+    print("## CA and Issuers")
     KUBECTL_PATH = which("kubectl")
-    RUN_KUBECTL = KUBECTL_PATH + f" create secret tls ca-key-pair --cert={ROOT_CERT_PATH} --key={ROOT_KEY_PATH} -n ingress-system"
+    RUN_KUBECTL = KUBECTL_PATH + f" create secret tls ca-key-pair --cert=ca.crt={ROOT_CERT_PATH} --cert={ROOT_CERT_PATH} --key={ROOT_KEY_PATH} -n ingress-system"
     run_command_stdout(RUN_KUBECTL)
-    RUN_KUBECTL = KUBECTL_PATH + f" create secret generic ca-pam --from-file=ca.crt={ROOT_CERT_PATH} --from-file=ca.key={ROOT_KEY_PATH} --from-file=ca.pem={ROOT_PAM_PATH} -n ingress-system"
+    RUN_KUBECTL = KUBECTL_PATH + f" annotate secret ca-key-pair -n ingress-system reflector.v1.k8s.emberstack.com/reflection-allowed=true reflector.v1.k8s.emberstack.com/reflection-auto-enabled=true"
     run_command_stdout(RUN_KUBECTL)
     RUN_KUBECTL = KUBECTL_PATH + " apply -n ingress-system -f " + ISSUER_PATH
     run_command_stdout(RUN_KUBECTL)
+
+    print("# Install reflector")
+    RUN_COMMAND = HELMFILE_PATH + " apply -f " + REFLECTOR_HELMFILE_PATH
+    run_command_stdout(RUN_COMMAND)
+
 
 def remove_cert_manager():
     print("# Remove cert-manager")

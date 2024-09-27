@@ -1,4 +1,5 @@
 authenticate:
+  existingTLSSecret: pomerium-tls
   idp:
     provider: "oidc"
     url: "https://keycloak.kdev.intra/realms/kind-apps"
@@ -10,9 +11,19 @@ authenticate:
       cert-manager.io/cluster-issuer: ca-issuer
     tls:
       secretName: pomerium-ingress-tls
+authorize:
+  existingTLSSecret: pomerium-tls
+databroker:
+  existingTLSSecret: pomerium-tls
+#  storage:
+#    clientTLS:
+#      existingSecretName: pomerium-redis-tls
+#      existingCASecretKey: ca.crt
 redis:
   enabled: false
-  generateTLS: true
+  generateTLS: false # On by default, disabled when cert-manager or another solution
+  tls:
+    certificateSecret: pomerium-redis-tls
 ingressController:
   enabled: true
   ingressClassResource:
@@ -20,11 +31,12 @@ ingressController:
     default: true
     name: "default"
 config:
-  rootDomain: kdev.intra #Change this to your reserved domain space.
-  generateTLS: true # On by default, disabled when cert-manager or another solution is in place.
-  existingCASecret: "ca-pem"
+  rootDomain: kdev.intra # Change this to your reserved domain space.
+  generateTLS: false # On by default, disabled when cert-manager or another solution
+  existingCASecret: pomerium-tls
 ingress:
   enabled: false
 proxy:
+  existingTLSSecret: pomerium-tls
   service:
     type: "LoadBalancer"

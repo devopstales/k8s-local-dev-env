@@ -1,0 +1,100 @@
+admissionController:
+  podLabels:
+    app.kubernetes.io/name: kyverno-admission-controller
+  resources:
+    limits:
+      cpu: 100m
+      memory: 256Mi
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    podSecurityContext:
+      runAsUser: 65534
+      runAsGroup: 65534
+      runAsNonRoot: true
+      privileged: false
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+      seccompProfile:
+        type: RuntimeDefault
+  rbac:
+    create: true
+  networkPolicy:
+    enabled: true
+  serviceMonitor:
+    enabled: true
+  tracing:
+    enabled: true
+    address: tempo.observability-system
+    port: 4317
+backgroundController:
+  resources:
+    limits:
+      cpu: 100m
+      memory: 256Mi
+    requests:
+      cpu: 10m
+      memory: 64Mi
+    securityContext:
+      runAsNonRoot: true
+      privileged: false
+      allowPrivilegeEscalation: false
+      readOnlyRootFilesystem: true
+      capabilities:
+        drop:
+          - ALL
+      seccompProfile:
+        type: RuntimeDefault
+  rbac:
+    create: true
+  networkPolicy:
+    enabled: true
+  serviceMonitor:
+    enabled: true
+  tracing:
+    enabled: true
+    address: tempo.observability-system
+    port: 4317
+cleanupController:
+  resources:
+    limits:
+      memory: 384Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  securityContext:
+    runAsNonRoot: true
+    privileged: false
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  rbac:
+    create: true
+  networkPolicy:
+    enabled: true
+  serviceMonitor:
+    enabled: true
+  tracing:
+    enabled: true
+    address: tempo.observability-system
+    port: 4317
+reportsController:
+  tracing:
+    enabled: true
+    address: tempo.observability-system
+    port: 4317
+grafana:
+  enabled: true
+  namespace: "monitoring-system"
+  annotations:
+    grafana_folder: "kyverno"
+  labels:
+    grafana_dashboard: "1"
+

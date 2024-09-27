@@ -204,7 +204,7 @@ def gen_cilium_config():
             {
                 'annotations': {
                     "cert-manager.io/cluster-issuer": "ca-issuer",
-                    "ingress.pomerium.io/allow_public_unauthenticated_access": "true",
+                    "ingress.pomerium.io/allow_any_authenticated_user": "true",
                 }
             }
         )

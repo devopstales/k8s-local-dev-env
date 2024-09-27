@@ -11,7 +11,6 @@ HOME = str(Path.home())
 APPHOME = HOME + "/k8s-local-dev-env"
 ROOT_CERT_PATH = APPHOME + "/.certs/kdev_rootCA.crt"
 ROOT_KEY_PATH = APPHOME + "/.certs/kdev_rootCA.key"
-ROOT_PAM_PATH = APPHOME + "/.certs/kdev_rootCA.pem"
 APP_PAM_PATH = APPHOME + "/.certs/kdev_app.pem"
 APP_KEY_PATH = APPHOME + "/.certs/kdev_app.key"
 APP_CERT_PATH = APPHOME + "/.certs/kdev_app.crt"
@@ -104,7 +103,7 @@ def get_cert():
             key_type=trustme.KeyType(0)
         )
         app_cert = ca.issue_cert(
-            "*.kdev.intra",
+            identities="*.kdev.intra",
             organization_name="kdev",
             organization_unit_name="IT",
             key_type=trustme.KeyType(0)
@@ -113,7 +112,6 @@ def get_cert():
         # static files
         ca.cert_pem.write_to_path(ROOT_CERT_PATH)
         ca.private_key_pem.write_to_path(ROOT_KEY_PATH)
-        ca.private_key_and_cert_chain_pem.write_to_path(ROOT_PAM_PATH)
 
         app_cert.private_key_and_cert_chain_pem.write_to_path(APP_PAM_PATH)
         app_cert.cert_chain_pems[0].write_to_path(APP_CERT_PATH)
