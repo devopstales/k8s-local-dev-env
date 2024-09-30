@@ -256,9 +256,9 @@ grafana:
       scopes: openid email profile
       client_id: "grafana"
       client_secret: "blLT7cqamLqR9CriDn40gDhChgtRkT4F"
-      auth_url: https://keycloak.kdev.intra/auth/realms/kind-apps/protocol/openid-connect/auth
-      token_url: https://keycloak.kdev.intra/auth/realms/kind-apps/protocol/openid-connect/token
-      api_url: https://keycloak.kdev.intra/auth/realms/kind-apps/protocol/openid-connect/userinfo
+      auth_url: https://keycloak.kdev.intra/auth/realms/k8s-apps/protocol/openid-connect/auth
+      token_url: https://keycloak.kdev.intra/auth/realms/k8s-apps/protocol/openid-connect/token
+      api_url: https://keycloak.kdev.intra/auth/realms/k8s-apps/protocol/openid-connect/userinfo
   sidecar:
     dashboards:
       enabled: true

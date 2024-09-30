@@ -1,0 +1,10 @@
+repositories:
+- name: ca-injector
+  url: https://microcumulus.github.io/ca-injector
+
+releases:
+- name: ca-injector
+  namespace: cluster-system
+  chart: ca-injector/ca-injector
+  labels:
+    environment: simple

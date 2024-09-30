@@ -1,0 +1,19 @@
+repositories:
+- name: devopstales
+  url: https://devopstales.github.io/helm-charts
+
+releases:
+- name: kubedash
+  namespace: dashboard-system
+  chart: devopstales/kubedash
+  labels:
+    environment: simple
+  values:
+   - pomerium-np-values.yaml
+- name: kubedash
+  namespace: dashboard-system
+  chart: devopstales/kubedash
+  labels:
+    environment: monitoring
+  values:
+   - kubedash-m-values.yaml

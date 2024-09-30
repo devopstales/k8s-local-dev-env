@@ -46,7 +46,7 @@ extraVolumes:
     name: keycloak-realm-config
 ########################################################################
 # Export command:
-# kubectl exec -it keycloak-0 -- /bin/bash -c "/opt/bitnami/keycloak/bin/kc.sh export --file=/tmp/realm.json --realm=kind-apps"
+# kubectl exec -it keycloak-0 -- /bin/bash -c "/opt/bitnami/keycloak/bin/kc.sh export --file=/tmp/realm.json --realm=k8s-apps"
 # kubectl cp keycloak-0:/tmp/realm.json ~/k8s-local-dev-env/realm.json
 # cat ~/k8s-local-dev-env/realm.json >> ~/k8s-local-dev-env/apps/sso/ns.yaml
 ########################################################################

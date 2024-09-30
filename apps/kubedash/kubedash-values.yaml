@@ -1,0 +1,57 @@
+TimeZone: "CET"
+
+image:
+  repository: devopstales/kubedash
+  pullPolicy: Always
+  tag: 3.0.0
+
+cluster:
+  name: "k8s-cluster"
+  apiUrl: "https://kubernetes.mydomain.intra:6443"
+  caCert: |-
+    -----BEGIN CERTIFICATE-----
+    cert data here
+    -----END CERTIFICATE-----
+
+oidc:
+  enabled: true
+  provider:
+    oidcUrl: "https://keycloak.kdev.intra/auth/realms/k8s-apps"
+    oidcScopes: "openid email"
+    oidcClientId: "k8s"
+    oidcSecret: "1Y1BDvwweUiVL89VFePBe5zSMIpI54NM"
+  secret:
+    name: "kubedash-oidc"
+    useExistingSecret: false
+
+plugins:
+  registryUi:
+    enabled: false
+  helmDashboard:
+    enabled: true
+
+ingress:
+  enabled: true
+  className: "default"
+  url: "kubedash.kdev.intra"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/server-snippets: |
+      location / {
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_http_version 1.1;
+        proxy_set_header X-Forwarded-Host $http_host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "upgrade";
+        proxy_cache_bypass $http_upgrade;
+      }
+  tls:
+    enabled: true
+    tlsSecret: "kubedash-ingress-tls"
+    certManager:
+      enabled: true
+      clusterIssuer: "ca-issuer"

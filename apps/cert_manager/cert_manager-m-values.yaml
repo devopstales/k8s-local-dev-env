@@ -1,5 +1,11 @@
 installCRDs: true
 clusterResourceNamespace: "ingress-system"
+app:
+  webhook:
+    tls:
+      approverPolicy:
+        enabled: true
+        certManagerNamespace: "ingress-system"
 resources:
   requests:
     cpu: 10m

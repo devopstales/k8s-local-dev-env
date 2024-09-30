@@ -1,0 +1,22 @@
+apiVersion: trust.cert-manager.io/v1alpha1
+kind: Bundle
+metadata:
+  name: public-bundle
+  namespace: cluster-system
+spec:
+  sources:
+  - useDefaultCAs: true
+  - secret:
+      name: "ca-key-pair"
+      key: "ca.crt"
+  target:
+    configMap:
+      key: "root-certs.pem"
+    additionalFormats:
+      jks:
+        key: "bundle.jks"
+      pkcs12:
+        key: "bundle.p12"
+    namespaceSelector:
+      matchLabels:
+        inject-trust: enabled
