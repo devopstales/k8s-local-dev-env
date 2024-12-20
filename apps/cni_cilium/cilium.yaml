@@ -3,7 +3,7 @@ repositories:
   url: https://helm.cilium.io/
 
 releases:
-- name: cni-cilium
+- name: cilium
   namespace: kube-system
   chart: cilium/cilium
   values:

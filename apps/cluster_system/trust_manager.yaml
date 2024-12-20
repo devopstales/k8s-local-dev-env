@@ -8,3 +8,12 @@ releases:
   chart: jetstack/trust-manager
   labels:
     environment: simple
+  values:
+   - trust-manager-values.yaml
+- name: trust-manager
+  namespace: cluster-system
+  chart: jetstack/trust-manager
+  labels:
+    environment: monitoring
+  values:
+   - trust-manager-m-values.yaml

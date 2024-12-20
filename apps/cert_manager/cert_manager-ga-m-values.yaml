@@ -1,11 +1,5 @@
 installCRDs: true
 clusterResourceNamespace: "ingress-system"
-app:
-  webhook:
-    tls:
-      approverPolicy:
-        enabled: true
-        certManagerNamespace: "ingress-system"
 config:
   apiVersion: controller.config.cert-manager.io/v1alpha1
   kind: ControllerConfiguration

@@ -2,16 +2,32 @@ TimeZone: "CET"
 
 image:
   repository: devopstales/kubedash
-  pullPolicy: Always
-  tag: 3.0.0
+  pullPolicy: IfNotPresent
+  tag: 3.1-devel
 
 cluster:
   name: "k8s-cluster"
-  apiUrl: "https://kubernetes.mydomain.intra:6443"
-  caCert: |-
-    -----BEGIN CERTIFICATE-----
-    cert data here
-    -----END CERTIFICATE-----
+  apiUrl: "https://kind-control-plane:6443"
+  #caCert: |-
+  #  -----BEGIN CERTIFICATE-----
+  #  MIIC/jCCAeagAwIBAgIBADANBgkqhkiG9w0BAQsFADAVMRMwEQYDVQQDEwprdWJl
+  #  cm5ldGVzMB4XDTI0MTIxMDEwMTMzMloXDTM0MTIwODEwMTMzMlowFTETMBEGA1UE
+  #  AxMKa3ViZXJuZXRlczCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAL4H
+  #  rDRQmWU7K0pGEQEr3QpYbkbF3VpmX9h8qbK4BsrsLi7fPd8mFQRT91HQHgRavBP/
+  #  gbS3IjmSZmg6xVzF2OifIkRHJXYTiYnSqMSJFhANmSQvXAV33YzQKMwCzUI/GGMn
+  #  1uL8lgjy1KtwUesiIu914tuBdmlB7LEGlUsaE9tXpHptft3YRIkgV5pNBirI1y1d
+  #  r6R1F1mB7rQOHi22tfnJAoW1VgFIzFOMteVizx+HoleFZG3jNgAy9NEPMbHi0u4c
+  #  GPycE1OzPP27DRiQ/J62STW0u3haCHIhAb4vWYemgivWm686wqJ9rYBBHG8OXXdy
+  #  /f+4O6Ez6lQwZ9v4Sv8CAwEAAaNZMFcwDgYDVR0PAQH/BAQDAgKkMA8GA1UdEwEB
+  #  /wQFMAMBAf8wHQYDVR0OBBYEFPWcCdQ149v+YDcrEwsSIbHs9qkfMBUGA1UdEQQO
+  #  MAyCCmt1YmVybmV0ZXMwDQYJKoZIhvcNAQELBQADggEBAKx3Tt/ulDjhMJXmCYgA
+  #  tk8nUZxrQNIhoBL1sKJ9GZHoxZ658T+JEZxgT1n+Og5YRsTw8x6LHclOtLqSKF3j
+  #  NP+3dTgpQG/5Pihgv1a8Kvl73NQOuluniEurD0t5ybMEGc3LxhA30PjbpT0w12XL
+  #  CNxIrzuui1aF4NJcMI0TTaQe16xhf2M5cgJW2uHATd9hAgFtrWSi8V08Zl7RN1Zl
+  #  b0e3KE8cQ1wPuZUSLBxUvakp8yeMsV9d0rmjj3FWLYyGmyNgLIjlhNHPat5a6nR/
+  #  4jFKKY4rkOlkXciWqu2tT6RbkmZv/cOUOH0S+W1aF/h391QC+lrwOZcVAdV/4f3e
+  #  Mdo=
+  #  -----END CERTIFICATE-----
 
 oidc:
   enabled: true
@@ -35,6 +51,9 @@ ingress:
   className: "default"
   url: "kubedash.kdev.intra"
   annotations:
+    ingress.pomerium.io/allow_websockets: "true"
+    ingress.pomerium.io/lb_policy: MAGLEV
+    ingress.pomerium.io/allow_public_unauthenticated_access: "true"
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"

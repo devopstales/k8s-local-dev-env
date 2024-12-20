@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import yaml
-import docker
 
 from .helepers import (
     which,
@@ -10,13 +9,15 @@ from .helepers import (
     APPHOME
 )
 
-from .docker import get_docker_network
+from .docker import get_docker_network, get_loadbalancer_subnet,\
+    get_hots_ip
 from ipaddress import ip_network
 
 CILIUM_CONFIG_PATH = APPHOME + "/apps/cni_cilium/cilium-values.yaml"
 CILIUM_HELMFILE_PATH = APPHOME + "/apps/cni_cilium/cilium.yaml"
 MONITORING_NS_PATH = APPHOME + "/apps/monitoring/ns.yaml"
-
+CILIUM_IP_PUUL_CONFIG_PATH = APPHOME + "/apps/lb_cilium/cilium-pool.yaml"
+CILIUM_BGP_POLICY_PATH = APPHOME + "/apps/lb_cilium/bgp-policy.yaml"
 
 #############################################################################
 # Cilium Configs
@@ -108,7 +109,7 @@ def gen_cilium_config():
         }
     }
 
-    if CONFIG_JSON['network']["mtls"] == "true":
+    if CONFIG_JSON['service_mesh']["driver"] == "cilium":
         #                     "mode": "required",
         cilium_base_config.update(
             {
@@ -237,6 +238,58 @@ def gen_cilium_config():
                     },
                 }
             )
+            # BGP Pearing Policy Configuration
+            host_IP = get_hots_ip()
+            cilium_bgp_pearing_policy_config = {
+                "apiVersion": "cilium.io/v2alpha1",
+                "kind": "CiliumBGPPeeringPolicy",
+                "metadata": {
+                    "name": "bgp-peering-policy"
+                },
+                "spec": {
+                    "virtualRouters": [
+                        {
+                            "localASN": 64512,
+                            "exportPodCIDR": False,
+                            "neighbors": [
+                                {
+                                    "peerAddress": host_IP+"/32",
+                                    "peerASN": 64513
+                                }
+                            ],
+                            "serviceSelector": {
+                                "matchExpressions": [
+                                    {
+                                        "key": "somekey",
+                                        "operator": "NotIn",
+                                        "values": ['never-used-value']
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+            with open(CILIUM_BGP_POLICY_PATH, 'w') as yaml_file:
+                yaml.dump(cilium_bgp_pearing_policy_config, yaml_file, default_flow_style=False)
+        # Generate IP Pool
+        loadbalancer_cidr = str(get_loadbalancer_subnet())
+        cilium_ip_pool_config = {
+            "apiVersion": "cilium.io/v2alpha1",
+            "kind": "CiliumLoadBalancerIPPool",
+            "metadata": {
+                "name": "kind-pool"
+            },
+            "spec": {
+                "blocks": [
+                    {
+                        "cidr": loadbalancer_cidr
+                    }
+                ]
+            }
+        }
+        with open(CILIUM_IP_PUUL_CONFIG_PATH, 'w') as yaml_file:
+            yaml.dump(cilium_ip_pool_config, yaml_file, default_flow_style=False)
 
     if CONFIG_JSON['ingress']['driver'] == "cilium":
         cilium_base_config.update(
@@ -249,7 +302,7 @@ def gen_cilium_config():
             }
         )
 
-    if CONFIG_JSON['ingress']['apigateway'] == "cilium":
+    if CONFIG_JSON['service_mesh']['apigateway'] == "cilium":
         cilium_base_config.update({
             'gatewayAPI': {
                 'enabled': True,
@@ -259,6 +312,10 @@ def gen_cilium_config():
 
     with open(CILIUM_CONFIG_PATH, 'w') as yaml_file:
         yaml.dump(cilium_base_config, yaml_file, default_flow_style=False)
+
+#############################################################################
+# Cilium
+#############################################################################
 
 def install_cilium():
     KUBECTL_PATH = which("kubectl")
@@ -270,6 +327,10 @@ def install_cilium():
     print("# Install Cilium")
     run_command_stdout(RUN_COMMAND)
 
+#############################################################################
+# Cilium LB
+#############################################################################
+
 def install_loadbalancer():
     print("# Install LoadBalancer")
     if CONFIG_JSON['network']['loadbalancer'] == "cilium":
@@ -279,9 +340,9 @@ def install_loadbalancer():
             network_subnets = list(ip_network(docker_network_subnet).subnets(new_prefix=24))
             lb_network_subnet = str(network_subnets[-1])
 
-            LBPOOL_FILE_PATH =  APPHOME + "/apps/lb_cilium_l2/cilium-pool.yaml"
-            ANNOUNCEMET_FILE_PATH =  APPHOME + "/apps/lb_cilium_l2/l2-announcement.yaml"
-            TEST_FILE_PATH = APPHOME + "/apps/lb_cilium_l2/lb-test.yaml"
+            LBPOOL_FILE_PATH =  APPHOME + "/apps/lb_cilium/cilium-pool.yaml"
+            ANNOUNCEMET_FILE_PATH =  APPHOME + "/apps/lb_cilium/l2-announcement.yaml"
+            TEST_FILE_PATH = APPHOME + "/apps/lb_cilium/lb-test.yaml"
 
             cilium_pool = {
                 "apiVersion": "cilium.io/v2alpha1",

@@ -8,6 +8,50 @@ from .helepers import (
     APPHOME,
 )
 
+from .docker import get_docker_network
+from ipaddress import ip_network
+
+def generate_dns_config():
+    network_data = get_docker_network("kind")
+    docker_network_subnet = network_data["IPAM"]['Config'][0]['Subnet']
+    network_subnets = list(ip_network(docker_network_subnet).subnets(new_prefix=24))
+    network_hosts = list(network_subnets[-1].hosts())
+    DNS_SERVER_IP = str(network_hosts[0])
+    coredns_config = f"""apiVersion: v1
+data:
+  Corefile: |
+    .:53 {{
+        errors
+        health {{
+           lameduck 5s
+        }}
+        ready
+        kubernetes cluster.local in-addr.arpa ip6.arpa {{
+           pods insecure
+           fallthrough in-addr.arpa ip6.arpa
+           ttl 30
+        }}
+        prometheus :9153
+        forward . /etc/resolv.conf {{
+           max_concurrent 1000
+        }}
+        cache 30
+        loop
+        reload
+        loadbalance
+    }}
+    kdev.intra:53 {{
+        errors
+        cache 30
+        forward . {DNS_SERVER_IP}
+    }}
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+"""
+    print(coredns_config)
+
 def create_dns_server():
     HELMFILE_PATH = which("helmfile")
     KUBECTL_PATH = which("kubectl")

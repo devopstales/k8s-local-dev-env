@@ -9,7 +9,8 @@ from functions.message import \
     
 from functions.docker import \
     create_docker_network, delete_docker_network, \
-    start_registry, stop_registry
+    start_registry, stop_registry, get_loadbalancer_subnet, \
+    generate_frr_config
 
 from functions.kind import \
     gen_kind_config, delete_kind_config, \
@@ -30,11 +31,10 @@ from functions.ingress import \
 # Apps
 #############################################################################
 
-from functions.apps.crd import deploy_crds
-from functions.apps.monitoring import \
-    deploy_prometheus
-from functions.apps.sso import \
-    create_sso_server
+from functions.apps import deploy_crds, \
+    deploy_prometheus, create_sso_server, \
+    create_kubedash_server, remove_kubedash_server
+
 
 #############################################################################
 # Variables
@@ -64,6 +64,9 @@ def up_functions():
         start_registry()
     gen_kind_config()
     start_kind()
+    if CONFIG_JSON['network']['loadbalancer'] == "cilium":
+        if CONFIG_JSON['network']['loadbalancer_mode'] == "bgp":
+            generate_frr_config()
     deploy_crds() # anmespaces, crds for: prometheus, gatewayApi, cert-manager, etc
 
 def down_functions():
@@ -78,9 +81,15 @@ def enable_function(addon):
         manage_cert()
 
     if addon == "registry":
-        start_registry()
+        if CONFIG_JSON['network']['loadbalancer'] == "cilium":
+            start_registry()
+        else:
+            print(f"Loadbalancer in not enable in config")
 
     if addon == "cilium":
+        if CONFIG_JSON['network']['loadbalancer'] == "cilium":
+            if CONFIG_JSON['network']['loadbalancer_mode'] == "bgp":
+                generate_frr_config()
         gen_cilium_config()
         install_cilium()
 
@@ -91,8 +100,11 @@ def enable_function(addon):
         install_cert_manager()
 
     if addon == "dns":
-        if CONFIG_JSON['network']['loadbalancer'] == "cilium":
-            create_dns_server()
+        if CONFIG_JSON['network']['local_dns_server'] == "true":
+            if CONFIG_JSON['network']['loadbalancer'] == "cilium":
+                create_dns_server()
+            else:
+                print(f"Loadbalancer in not enable in config")
 
     if addon == "sso":
         if CONFIG_JSON['sso']['enabled'] == 'true':
@@ -100,10 +112,18 @@ def enable_function(addon):
         else:
             print(f"SSO in not enable in config")
 
+    if addon == "kubedash":
+        if CONFIG_JSON['sso']['enabled'] == 'true':
+            create_sso_server()
+            create_kubedash_server()
+        else:
+            print(f"SSO in not enable in config")
+
     if addon == "loadbalancer":
         if CONFIG_JSON['network']['loadbalancer'] == "cilium":
             install_loadbalancer()
-            create_dns_server()
+            if CONFIG_JSON['network']['local_dns_server'] == "true":
+                create_dns_server()
         else:
             print(f"Loadbalancer in not enable in config")
 
@@ -113,7 +133,10 @@ def enable_function(addon):
         install_cert_manager()
         if CONFIG_JSON['network']['loadbalancer'] == "cilium":
             install_loadbalancer()
-            create_dns_server()
+            if CONFIG_JSON['network']['local_dns_server'] == "true":
+                create_dns_server()
+        else:
+            print(f"Loadbalancer in not enable in config")
         if CONFIG_JSON['sso']['enabled'] == 'true':
             create_sso_server()
         install_ingress()
@@ -128,35 +151,60 @@ def disable_function(addon):
     if addon == "registry":
         stop_registry()
 
+    if addon == "kubedash":
+        remove_kubedash_server()
+
 #############################################################################
 # status
-#############################################################################
-
-def import_image_function(image_name):
-    load_docker_image(image_name)
+############################################################################# 
 
 def status_functions():
-    ok_status = f"{Fore.GREEN}OK{Style.RESET_ALL}"
+    running_status = f"{Fore.GREEN}Running{Style.RESET_ALL}"
+    stopprd_status = f"{Fore.RED}Stopped{Style.RESET_ALL}"
+    enabled_status = f"{Fore.GREEN}Enabled{Style.RESET_ALL}"
+    disabled_status = f"{Fore.RED}Disabled{Style.RESET_ALL}"
+    loadbalancer_cidr = get_loadbalancer_subnet()
+
+    # add dns ip, reigistry ip,
 
     print(f"""Cluster:
-    Kernel Moduls:  {ok_status}
-    Network:        {ok_status}
-    kind Cluster:
-        Status          {ok_status}
-        Api:            {CONFIG_JSON['network']['api_host']}:{CONFIG_JSON['network']['api_port']}
-        Cluster CIDR:   {CONFIG_JSON['network']['cluster_cidr']}
-        Service CIDR:   {CONFIG_JSON['network']['service_cidr']}
+    Status:         {running_status} # test cluster status
+    Api:            {Fore.YELLOW}{CONFIG_JSON['network']['api_host']}:{CONFIG_JSON['network']['api_port']}{Style.RESET_ALL}
+    CNI:            {CONFIG_JSON['network']['driver'] if CONFIG_JSON['network']['driver'] != 'none' else disabled_status}
+    Cluster CIDR:   {Fore.YELLOW}{CONFIG_JSON['network']['cluster_cidr']}{Style.RESET_ALL}
+    Service CIDR:   {Fore.YELLOW}{CONFIG_JSON['network']['service_cidr']}{Style.RESET_ALL}
+
+Docker:
+    CIDR:           {Fore.YELLOW}{CONFIG_JSON['network']['subnet']}{Style.RESET_ALL}
+    Registry:       {enabled_status if CONFIG_JSON['monitoring']['enabled'] == 'true' else disabled_status}
+
+Load Balancer:
+    Type:           {CONFIG_JSON['network']['loadbalancer'] if CONFIG_JSON['network']['loadbalancer'] != 'none' else disabled_status}
+    Mode:           {Fore.BLUE}{CONFIG_JSON['network']['loadbalancer_mode']}{Style.RESET_ALL}
+    CIDR:           {Fore.YELLOW}{loadbalancer_cidr}{Style.RESET_ALL}
+
+Ingress:
+    Type:           {enabled_status if CONFIG_JSON['registry']['enabled'] != 'true' else disabled_status}
+
+Service Mash:
+    Type:           {CONFIG_JSON['service_mesh']['driver'] if CONFIG_JSON['service_mesh']['driver'] != 'none' else disabled_status}
+    ApiGateway:     {CONFIG_JSON['service_mesh']['apigateway'] if CONFIG_JSON['service_mesh']['apigateway'] != 'none' else disabled_status}
+
 Addons:
-    DNS:
-    Rehistry:
-    CNI:
-    LoadBalancer:
-    Ingress:
-    ApiGateway:
-    mTLS:
-    Monitoring:
+    Core DNS:       {enabled_status if CONFIG_JSON['network']['local_dns_server'] == 'true' and CONFIG_JSON['network']['loadbalancer'] == "cilium" else disabled_status} - Local DNS server on a load balancer service
+    External DNS:   {enabled_status if CONFIG_JSON['network']['local_dns_server'] == 'true' and CONFIG_JSON['network']['loadbalancer'] == "cilium" else disabled_status} - Generating DNS records for ingress hostnames in local DNS server
+    Federated DNS:  {enabled_status if CONFIG_JSON['network']['local_dns_server'] == 'true' and CONFIG_JSON['network']['loadbalancer'] == "cilium" else disabled_status} - Allow ingress hostname DNS resolution from kubernetes
+    Cert-Manager:   {enabled_status} - Generate certs under self signed CA
+    Trues Manager:  {enabled_status} - Generating Trust CA bundle with self signed CA
+    CA Injector:    {enabled_status} - Inject Trust CA bundle into pods
+    Reflector:      {enabled_status} - Automaticle copy CA certificates for all namespace
+    Keycloak:       {enabled_status if CONFIG_JSON['sso']['enabled'] == 'true' else disabled_status} - Keycloak is an open source identity and access management solution.
+    KubeDash:       {enabled_status if CONFIG_JSON['kubedash']['enabled'] == 'true' and CONFIG_JSON['sso']['enabled'] == 'true' else enabled_status} - KubeDash is a general purpose, web-based UI for Kubernetes clusters. 
+    Monitoring:     {enabled_status if CONFIG_JSON['monitoring']['enabled'] == 'true' else disabled_status} - Prometheus Operator for monitoring and logging
+    Observability:  {enabled_status if CONFIG_JSON['observability']['enabled'] == 'true' else disabled_status} - A lightweight Observability stack for taces and metrics
 """)
  
+
 #############################################################################
 # argparser
 #############################################################################
@@ -197,4 +245,4 @@ if args.disable:
     disable_function(args.disable)
 
 if args.load_image:
-    import_image_function(args.load_image)
+    load_docker_image(args.load_image[0])

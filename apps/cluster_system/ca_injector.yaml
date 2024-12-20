@@ -8,3 +8,8 @@ releases:
   chart: ca-injector/ca-injector
   labels:
     environment: simple
+- name: ca-injector
+  namespace: cluster-system
+  chart: ca-injector/ca-injector
+  labels:
+    environment: monitoring

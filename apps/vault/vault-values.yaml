@@ -1,0 +1,47 @@
+ui:
+  enabled: true
+server:
+  dev:
+    enabled: true
+  ingress:
+    enabled: true
+    annotations:
+      cert-manager.io/cluster-issuer: ca-issuer
+      ingress.pomerium.io/allow_public_unauthenticated_access: "true"
+    hosts:
+      - host: vault.kdev.intra
+        paths: []
+    tls:
+      - secretName: vault-ingress-tls
+        hosts:
+          - vault.kdev.intra
+
+  standalone:
+    enabled: "true"
+    config: |
+      ui = true
+
+      listener "tcp" {
+        tls_disable = 1
+        address = "[::]:8200"
+        cluster_address = "[::]:8201"
+      }
+      storage "file" {
+        path = "/vault/data"
+      }
+
+      #storage "etcd" {
+      #  address  = "http://localhost:2379"
+      #  etcd_api = "v3"
+      #}
+
+
+## SSO callback
+# https://developer.hashicorp.com/vault/docs/auth/jwt/oidc-providers/keycloak#http-vault-example-com-ui-vault-auth-oidc-oidc-callback
+# https://developer.hashicorp.com/vault/docs/auth/jwt/oidc-providers/keycloak#http-vault-example-com-oidc-oidc-callback
+## Docs
+# https://medium.com/@sauravkumarsct/integrate-keycloak-as-oidc-jwt-provider-with-hashicorp-vault-ae9ebcf8e335
+## wait
+# https://github.com/roboll/helmfile/issues/785
+## config operatioor
+# https://piotrminkowski.com/2024/04/05/gitops-on-kubernetes-for-postgres-and-vault-with-argo-cd/

@@ -1,0 +1,109 @@
+
+# Nginy Ingress Controller
+
+# Pomerium Ingress Controller
+
+Pomerium Ingress Controller has an automatic option to SSO authentication with OAuth server. We use Keykloac as an Oauth Server.
+
+## Annotations
+
+| Annotation | Description |
+| ---------- | ----------- |
+| `ingress.pomerium.io/secure_upstream` | When set to `"true"`, use `https` when connecting to the upstream endpoint. |
+| `ingress.pomerium.io/allow_websockets` | 
+| `ingress.pomerium.io/allow_any_authenticated_user` | When set to `"true"`, allows access to any user that was successfully authenticated with your Identity Provider. |
+| `ingress.pomerium.io/allow_public_unauthenticated_access` | When set to `"true"`, does not require authentication, grants public access |
+| `ingress.pomerium.io/policy` | Pomerium Policy Language YAML or JSON block (as string) |
+
+```yaml
+ingress.pomerium.io/policy: |
+  allow:
+    and:
+      - domain:
+          is: pomerium.com
+```
+
+```yaml
+ingress.pomerium.io/policy: |
+  allow:
+    or:
+      - user:
+          is: user1@example.com
+      - user:
+          is: user2@example.com
+```
+
+```yaml
+ingress.pomerium.io/policy: |
+  allow:
+    and:
+      - claim/groups: admin
+```
+
+```yaml
+ingress.pomerium.io/policy: |
+  allow:
+    and:
+    - domain:
+        is: example.com
+    - claim/groups: admin
+```
+
+### Path Regex
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/issuer: example-issuer
+    ingress.pomerium.io/policy: |
+      allow:
+        and:
+        - domain:
+            is: exampledomain.com
+    ingress.pomerium.io/path_regex: 'true'
+  name: example
+spec:
+  ingressClassName: pomerium
+  rules:
+    - host: example.localhost.pomerium.io
+      http:
+        paths:
+          - backend:
+              service:
+                name: example
+                port:
+                  name: http
+            path: ^/(admin|superuser)/.*$
+            pathType: ImplementationSpecific
+  tls:
+    - hosts:
+        - example.localhost.pomerium.io
+      secretName: example-tls
+```
+
+#### TCP service
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tcp-example
+  annotations:
+    ingress.pomerium.io/tcp_upstream: 'true'
+spec:
+  ingressClassName: pomerium
+  rules:
+    - host: 'tcp.localhost.pomerium.io'
+      http:
+        paths:
+          - pathType: ImplementationSpecific
+            backend:
+              service:
+                name: tcp-service
+                port:
+                  name: app
+```
+
+* https://www.pomerium.com/docs/k8s/ingress.html

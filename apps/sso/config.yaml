@@ -1,0 +1,157 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name:  keycloak-access
+  namespace: auth-system
+type: Opaque
+data:
+  username: YWRtaW4=
+  password: YWRtaW4=
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name:  keycloak-client-secrets
+  namespace: auth-system
+type: Opaque
+data:
+  pomerium: eTVxNWplRXBFbUw3YUpoNzRUZ3NiMzJhSnoxTGFLQWg=
+  k8s: MVkxQkR2d3dlVWlWTDg5VkZlUEJlNXpTTUlwSTU0Tk0=
+  grafana: YmxMVDdjcWFtTHFSOUNyaURuNDBnRGhDaGd0UmtUNEY=
+  kubedash: bmtCZUp6dnJCeHpSZkdOREpFTnJFdnd0bnFjekdMems=
+  vault: ampsc0tsanNmS3c5YTJubmFzdmthZm04Mm5MTkZFNzM=
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name:  keycloak-user-secrets
+  namespace: auth-system
+type: Opaque
+data:
+  k8s-user: azhzLXVzZXI=
+---
+apiVersion: v1.edp.epam.com/v1
+kind: Keycloak
+metadata:
+  name: keycloak
+  namespace: auth-system
+spec:
+  secret: keycloak-access
+  url: https://keycloak.kdev.intra
+  caCert:
+    secretKeyRef:
+      name: ca-key-pair
+      key: ca.crt
+---
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakRealm
+metadata:
+  name: k8s-apps
+  namespace: auth-system
+  annotations:
+    edp.epam.com/preserve-resources-on-deletion: "true"
+spec:
+  id: 6f32aa7f-4b39-4be1-ac71-b6b21a46aacd
+  realmName: k8s-apps
+  keycloakRef:
+    name: keycloak
+    kind: Keycloak
+---
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakClient
+metadata:
+  name: keycloakclient-k8s
+  namespace: auth-system
+spec:
+  realmRef:
+    name: k8s-apps
+    kind: KeycloakRealm
+  clientId: k8s
+  secret: $keycloak-client-secrets:k8s
+  redirectUris:
+    - http://*.kdev.intra/*
+    - https://*.kdev.intra/*
+---
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakClient
+metadata:
+  name: keycloakclient-grafana
+  namespace: auth-system
+spec:
+  realmRef:
+    name: k8s-apps
+    kind: KeycloakRealm
+  clientId: grafana
+  secret: $keycloak-client-secrets:grafana
+  webUrl: https://grafana.kdev.intra
+  redirectUris:
+    - http://*.kdev.intra/*
+    - https://*.kdev.intra/*
+---
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakClient
+metadata:
+  name: keycloakclient-kubedash
+  namespace: auth-system
+spec:
+  realmRef:
+    name: k8s-apps
+    kind: KeycloakRealm
+  clientId: kubedash
+  secret: $keycloak-client-secrets:kubedash
+  webUrl: https://kubedash.kdev.intra
+  redirectUris:
+    - http://*.kdev.intra/*
+    - https://*.kdev.intra/*
+---
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakClient
+metadata:
+  name: keycloakclient-pomerium
+  namespace: auth-system
+spec:
+  realmRef:
+    name: k8s-apps
+    kind: KeycloakRealm
+  clientId: pomerium
+  secret: $keycloak-client-secrets:pomerium
+  webUrl: https://authenticate.kdev.intra
+  redirectUris:
+    - https://authenticate.kdev.intra/oauth2/callback
+---
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakClient
+metadata:
+  name: keycloakclient-vault
+  namespace: auth-system
+spec:
+  realmRef:
+    name: k8s-apps
+    kind: KeycloakRealm
+  clientId: vault
+  secret: $keycloak-client-secrets:vault
+  webUrl: https://vault.kdev.intra
+  redirectUris:
+    - https://vault.kdev.intra/ui/vault/auth/oidc/oidc/callback
+    - https://vault.kdev.intra/oidc/oidc/callback
+---
+apiVersion: v1.edp.epam.com/v1
+kind: KeycloakRealmUser
+metadata:
+  name: k8s-user
+  namespace: auth-system
+spec:
+  realmRef:
+    name: k8s-apps
+    kind: KeycloakRealm
+  username: "k8s-user"
+  firstName: "k8s"
+  lastName: "user"
+  email: "k8s-user@kdev.intra"
+  enabled: true
+  emailVerified: true
+  keepResource: true
+  passwordSecret:
+    name: keycloak-user-secrets
+    key: k8s-user

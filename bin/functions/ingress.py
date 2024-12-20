@@ -37,16 +37,22 @@ POMERIUM_ISSUER_PATH = APPHOME + "/apps/ingress_pomerium/pomerium-cert.yaml"
 
 
 CM_HELMFILE_PATH =  APPHOME + "/apps/cert_manager/cert_manager.yaml"
+TM_HELMFILE_PATH = APPHOME + "/apps/cluster_system/trust_manager.yaml"
+CAI_HELMFILE_PATH = APPHOME + "/apps/cluster_system/ca_injector.yaml"
+
 REFLECTOR_HELMFILE_PATH = APPHOME + "/apps/cluster_system/reflector.yaml"
+BUNDLE_PATH = APPHOME + "/apps/cluster_system/trust_manager-bundle.yaml"
 
 ISSUER_PATH = APPHOME + "/apps/cert_manager/cert_manager-issuer.yaml"
 if CONFIG_JSON['monitoring']['enabled'] == "true":
-    if CONFIG_JSON['ingress']['apigateway'] == "none":
+    TM_TYPE="environment=monitoring"
+    if CONFIG_JSON['service_mesh']['apigateway'] == "none":
         CM_TYPE="environment=monitoring"
     else:
         CM_TYPE="environment=monitoring-ga"
 else:
-    if CONFIG_JSON['ingress']['apigateway'] == "none":
+    TM_TYPE="environment=simple"
+    if CONFIG_JSON['service_mesh']['apigateway'] == "none":
         CM_TYPE="environment=simple"
     else:
         CM_TYPE="environment=simple-ga"
@@ -86,19 +92,29 @@ def install_cert_manager():
     RUN_COMMAND = HELMFILE_PATH + " apply -f " + CM_HELMFILE_PATH + " -l " + CM_TYPE
     print("# Install cert-manager")
     run_command_stdout(RUN_COMMAND)
+    
+    print("# Install reflector")
+    RUN_COMMAND = HELMFILE_PATH + " apply -f " + REFLECTOR_HELMFILE_PATH
+    run_command_stdout(RUN_COMMAND)
 
-    print("## CA and Issuers")
+    print("## Trust Manager")
+    RUN_COMMAND = HELMFILE_PATH + " apply -f " + TM_HELMFILE_PATH + " -l " + TM_TYPE
+    run_command_stdout(RUN_COMMAND)
+
+    print("## CA Injector")
+    RUN_COMMAND = HELMFILE_PATH + " apply -f " + CAI_HELMFILE_PATH + " -l " + TM_TYPE
+    run_command_stdout(RUN_COMMAND)
+
+    print("## CA, Cert Bundle, Issuers")
     KUBECTL_PATH = which("kubectl")
-    RUN_KUBECTL = KUBECTL_PATH + f" create secret tls ca-key-pair --cert=ca.crt={ROOT_CERT_PATH} --cert={ROOT_CERT_PATH} --key={ROOT_KEY_PATH} -n ingress-system"
+    RUN_KUBECTL = KUBECTL_PATH + f" create secret generic ca-key-pair --from-file=ca.crt={ROOT_CERT_PATH} --from-file=tls.crt={ROOT_CERT_PATH} --from-file=tls.key={ROOT_KEY_PATH} -n ingress-system"
     run_command_stdout(RUN_KUBECTL)
     RUN_KUBECTL = KUBECTL_PATH + f" annotate secret ca-key-pair -n ingress-system reflector.v1.k8s.emberstack.com/reflection-allowed=true reflector.v1.k8s.emberstack.com/reflection-auto-enabled=true"
     run_command_stdout(RUN_KUBECTL)
     RUN_KUBECTL = KUBECTL_PATH + " apply -n ingress-system -f " + ISSUER_PATH
     run_command_stdout(RUN_KUBECTL)
-
-    print("# Install reflector")
-    RUN_COMMAND = HELMFILE_PATH + " apply -f " + REFLECTOR_HELMFILE_PATH
-    run_command_stdout(RUN_COMMAND)
+    RUN_KUBECTL = KUBECTL_PATH + " apply -n cluster-system -f " + BUNDLE_PATH
+    run_command_stdout(RUN_KUBECTL)
 
 
 def remove_cert_manager():

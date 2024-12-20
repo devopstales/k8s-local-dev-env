@@ -1,0 +1,18 @@
+secretTargets:
+  enabled: true
+  authorizedSecretsAll: true
+app:
+  trust:
+    namespace: cluster-system
+# https://cert-manager.io/docs/policy/approval/approver-policy/installation/
+  webhook:
+    tls:
+      approverPolicy:
+        enabled: false
+        certManagerNamespace: ingress-system
+  metrics:
+    service:
+      servicemonitor:
+        enabled: true
+        prometheusInstance: "default"
+        labels: {}

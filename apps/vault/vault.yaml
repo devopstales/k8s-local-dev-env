@@ -1,0 +1,20 @@
+repositories:
+- name: hashicorp
+  url: https://helm.releases.hashicorp.com
+- name: vault-config-operator
+  url: https://redhat-cop.github.io/vault-config-operator
+
+releases:
+- name: hashicorp-vault
+  namespace: vault-system
+  chart: hashicorp/vault
+  values:
+   - vault-values.yaml
+- name: job
+  namespace: vault-system
+  chart: job/
+- name: vault-config-operator
+  namespace: vault-system
+  chart: vault-config-operator/vault-config-operator
+  values:
+    - config-operator-values.yaml

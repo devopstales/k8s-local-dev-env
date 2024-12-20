@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: vault-admin-initializer
+  namespace: vault-system
+spec:
+  ttlSecondsAfterFinished: 100
+  template:
+    spec:
+      containers:
+        - name: vault-admin-initializer
+          image: hashicorp/vault:1.15.2
+          env:
+            - name: VAULT_ADDR
+              value: http://hashicorp-vault.vault-system.svc:8200
+          command:
+            - /bin/sh
+            - -c
+            - |
+              export VAULT_TOKEN=root
+              sleep 12
+              # enable Kubernetes 
+              vault auth enable kubernetes
+              vault write auth/kubernetes/config kubernetes_host=https://kubernetes.default.svc:443 kubernetes_ca_cert=@/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+              # enable databse
+              vault secrets enable database
+              # enable pki
+              vault secrets enable pki
+              vault secrets tune -max-lease-ttl=87600h pki
+              vault secrets enable -path=pki_int pki
+              vault secrets tune -max-lease-ttl=43800h pki_int
+              # enable oicd
+              vault auth enable oidc
+              vault write auth/oidc/config oidc_discovery_url="https://keycloak.kdev.intra/realms/k8s-apps" oidc_client_id="vault" oidc_client_secret="jjlsKljsfKw9a2nnasvkafm82nLNFE73" default_role="vault-admin"
+              # set policy
+              vault write auth/kubernetes/role/vault-admin bound_service_account_names=default bound_service_account_namespaces=default policies=vault-admin ttl=1h
+              vault policy write vault-admin - <<EOF
+                path "/*" {
+                  capabilities = ["create", "read", "update", "delete", "list","sudo"]
+                }          
+              EOF
+      restartPolicy: Never

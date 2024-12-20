@@ -9,6 +9,8 @@ from .helepers import (
     CONFIG_JSON,
 )
 
+from .docker import get_docker_registry_ip
+
 import docker
 from netaddr import IPNetwork
 
@@ -58,11 +60,7 @@ def gen_kind_config():
         )
 
     if CONFIG_JSON['registry']['enabled'] == "true":
-        d = docker.from_env()
-        container = d.containers.get("docker_registry")
-        network = d.networks.get("kind")
-        registry_ip_network = network.attrs['Containers'][container.id]['IPv4Address']
-        REGISTRY_IP = IPNetwork(registry_ip_network).ip
+        REGISTRY_IP = get_docker_registry_ip()
         kind_registry_config = f"""containerdConfigPatches:
 - |-
   [plugins."io.containerd.grpc.v1.cri".registry.mirrors."registry.kdev.intra:5000"]

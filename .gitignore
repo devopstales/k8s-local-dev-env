@@ -4,7 +4,8 @@ __pycache__
 .certs/*.key
 .certs/*.crt
 
-apps/lb_cilium_l2/cilium-pool.yaml
+apps/lb_cilium/cilium-pool.yaml
+apps/lb_cilium/bgp-policy.yaml
 apps/cni_cilium/cilium-values.yaml
 
 venv/**
