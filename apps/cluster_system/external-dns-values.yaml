@@ -1,6 +1,0 @@
-provider: coredns
-policy: sync
-coredns:
-  etcdEndpoints: "http://etcd-cluster.cluster-system.svc.cluster.local:2379"
-  etcdTLS:
-    enabled: false

@@ -1,0 +1,57 @@
+version: '3'
+
+tasks:
+  default:
+    desc: "Print Help"
+    cmds:
+      - "task --list-all"
+
+  dependency:
+    desc: "Install dependencies"
+    cmds:
+      - brew install kind
+      - brew install kubernetes-cli
+      - brew install helm
+      - helm plugin install https://github.com/databus23/helm-diff
+      - brew install helmfile
+      - brew install cilium-cli
+      - brew install mkcert
+      - brew install nss # if you use Firefox
+
+  up:
+    desc: "Start KIND Cluster"
+    cmds:
+      - export CAROOT=$HOME/k8s-local-dev-env/.certs
+      - mkcert -cert-file $CAROOT/cert.pem -key-file $CAROOT/key.pem -install "*.kdev.intra"
+      - kind create cluster --config config/kind-config.yaml --name kdev
+      - helmfile apply -f apps/cni/cilium/cilium.yaml --wait
+      - helmfile apply -f apps/crd/prometheus/prometheus.yaml --wait
+
+  install-ingress-nginx:
+    desc: "Install Ingress NGINX"
+    cmds:
+      - helmfile apply -f apps/ingress/nginx/nginx.yaml
+
+  install-cert-manager:
+    desc: "Install Cert Manager"
+    cmds:
+      - helmfile apply -f apps/cert/manager/cert_manager.yaml --wait
+      - export CAROOT=$HOME/k8s-local-dev-env/.certs
+      - kubectl create secret tls ca-key-pair --cert=ca.crt=$CAROOT/rootCA.pem --cert=$CAROOT/cert.pem --key=$CAROOT/key.pem -n ingress-system
+      - kubectl apply -f apps/cert/manager/cert_manager-issuer.yaml --wait
+      - helmfile apply -f apps/cert/reflector/reflector.yaml --wait
+      - helmfile apply -f apps/cert/injector/ca_injector.yaml --wait
+      - helmfile apply -f apps/cert/trust/trust_manager.yaml --wait
+      - helmfile apply -f apps/cert/trust/trust_manager_bundle.yaml --wait
+
+  up-all:
+    desc: "Start all apps"
+    deps:
+      - up
+      - install-ingress-nginx
+      - install-cert-manager
+
+  down:
+    desc: "Stop KIND Cluster"
+    cmds:
+      - kind delete cluster --name kdev

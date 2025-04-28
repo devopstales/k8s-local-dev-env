@@ -1,9 +1,0 @@
-auth:
-  rbac:
-    enabled: false
-    create: false
-    rootPassword: "QBjlI5hW9n"
-podAnnotations:
-  prometheus.io/scrape: "true"
-  prometheus.io/path: "/metrics/cluster"
-  prometheus.io/port: "9000"
