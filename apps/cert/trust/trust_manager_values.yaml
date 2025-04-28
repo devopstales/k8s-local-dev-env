@@ -1,0 +1,5 @@
+app:
+  trust:
+    namespace: ingress-system
+crds:
+  enabled: true

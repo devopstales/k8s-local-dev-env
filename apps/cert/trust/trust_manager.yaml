@@ -8,3 +8,5 @@ releases:
   chart: jetstack/trust-manager
   labels:
     environment: simple
+  values:
+    - trust_manager_values.yaml

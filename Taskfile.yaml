@@ -12,45 +12,71 @@ tasks:
       - brew install kind
       - brew install kubernetes-cli
       - brew install helm
-      - helm plugin install https://github.com/databus23/helm-diff
+      #- helm plugin install https://github.com/databus23/helm-diff
       - brew install helmfile
       - brew install cilium-cli
       - brew install mkcert
       - brew install nss # if you use Firefox
+      - sudo wget https://raw.github.com/xwmx/hosts/master/hosts -O /usr/local/bin/hosts && \
+        sudo chmod +x /usr/local/bin/hosts && \
+        sudo hosts completions install
+
+  add-hosts:
+    desc: "Add hosts"
+    cmds:
+      - cmd: sudo hosts remove cilium.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts remove authenticate.kdev.intra --force
+        ignore_error: true
+      - sudo hosts add 127.0.0.1 cilium.kdev.intra
+      - sudo hosts add 127.0.0.1 authenticate.kdev.intra
+      #- hosts
 
   up:
     desc: "Start KIND Cluster"
     cmds:
+      - docker network inspect kind > /dev/null || docker network create --attachable --label reated_by.minikube.sigs.k8s.io=true --label name.minikube.sigs.k8s.io=kdev --label app=kdev --opt com.docker.network.driver.mtu=1500 --subnet=198.18.254.0/24 kind
       - export CAROOT=$HOME/k8s-local-dev-env/.certs
-      - mkcert -cert-file $CAROOT/cert.pem -key-file $CAROOT/key.pem -install "*.kdev.intra"
-      - kind create cluster --config config/kind-config.yaml --name kdev
+      - sudo mkcert -cert-file $CAROOT/cert.pem -key-file $CAROOT/cert-key.pem -install "*.kdev.intra"
+      - kind create cluster --config config/kind/kind-config.yaml --name kdev
       - helmfile apply -f apps/cni/cilium/cilium.yaml --wait
       - helmfile apply -f apps/crd/prometheus/prometheus.yaml --wait
       - kubectl apply -f apps/crd/gateway/v1.3.0_standard-install.yaml --wait
+
+  install-cert-manager:
+    desc: "Install Cert Manager"
+    cmds:
+      - kubectl get ns ingress-system > /dev/null || kubectl create ns ingress-system
+      - helmfile apply -f apps/cert/manager/cert_manager.yaml --wait
+      - export CAROOT=$HOME/k8s-local-dev-env/.certs
+      - kubectl get secret ca-key-pair -n ingress-system || kubectl create secret generic ca-key-pair --from-file=ca.crt=$CAROOT/rootCA.pem --from-file=tls.crt=$CAROOT/rootCA.pem --from-file=tls.key=$CAROOT/rootCA-key.pem -n ingress-system
+      - kubectl annotate secret ca-key-pair -n ingress-system reflector.v1.k8s.emberstack.com/reflection-allowed=true reflector.v1.k8s.emberstack.com/reflection-auto-enabled=true
+      - kubectl apply -f apps/cert/manager/cert_manager-issuer.yaml --wait
+      - helmfile apply -f apps/cert/reflector/reflector.yaml --wait
+      - helmfile apply -f apps/cert/injector/ca_injector.yaml --wait
+      - helmfile apply -f apps/cert/trust/trust_manager.yaml --wait
+      - kubectl apply -f apps/cert/trust/trust_manager-bundle.yaml --wait
+
 
   install-ingress-nginx:
     desc: "Install Ingress NGINX"
     cmds:
       - helmfile apply -f apps/ingress/nginx/nginx.yaml
 
-  install-cert-manager:
-    desc: "Install Cert Manager"
+  install-ingress-pomerium:
+    desc: "Install Ingress Pomerium"
+    deps:
+      - install-cert-manager
     cmds:
-      - helmfile apply -f apps/cert/manager/cert_manager.yaml --wait
-      - export CAROOT=$HOME/k8s-local-dev-env/.certs
-      - kubectl get secret ca-key-pair -n ingress-system || kubectl create secret tls ca-key-pair --cert=ca.crt=$CAROOT/rootCA.pem --cert=$CAROOT/cert.pem --key=$CAROOT/key.pem -n ingress-system
-      - kubectl apply -f apps/cert/manager/cert_manager-issuer.yaml --wait
-      - helmfile apply -f apps/cert/reflector/reflector.yaml --wait
-      - helmfile apply -f apps/cert/injector/ca_injector.yaml --wait
-      - helmfile apply -f apps/cert/trust/trust_manager.yaml --wait
-      - helmfile apply -f apps/cert/trust/trust_manager_bundle.yaml --wait
+      - kubectl apply -f apps/ingress/pomerium/pomerium-cert.yaml --wait
+      - helmfile apply -f apps/ingress/pomerium/pomerium.yaml --wait
 
   up-all:
     desc: "Start all apps"
     deps:
       - up
-      - install-ingress-nginx
       - install-cert-manager
+      - install-ingress-pomerium
 
   down:
     desc: "Stop KIND Cluster"

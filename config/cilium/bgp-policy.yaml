@@ -1,0 +1,17 @@
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPPeeringPolicy
+metadata:
+  name: bgp-peering-policy
+spec:
+  virtualRouters:
+  - exportPodCIDR: false
+    localASN: 64512
+    neighbors:
+    - peerASN: 64513
+      peerAddress: 198.18.254.1/32
+    serviceSelector:
+      matchExpressions:
+      - key: somekey
+        operator: NotIn
+        values:
+        - never-used-value
