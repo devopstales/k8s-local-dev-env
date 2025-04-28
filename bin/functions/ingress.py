@@ -1,37 +1,32 @@
 #!/usr/bin/env python3
 
-from .helepers import (
-    which,
-    run_command_stdout, 
-    CONFIG_JSON, 
-    APPHOME,
-    ROOT_CERT_PATH,
-    ROOT_KEY_PATH
-)
+from .helepers import which, run_command_stdout
 
 #############################################################################
 # Variables
 #############################################################################
 
-INGRESS_TYPE = CONFIG_JSON['ingress']['driver']
-if INGRESS_TYPE == "nginx":
-    INGRESS_HELMFILE_PATH = APPHOME + "/apps/ingress_nginx/nginx.yaml"
-elif INGRESS_TYPE == "pomerium":
-    if CONFIG_JSON['sso']['enabled'] != "true":
-        INGRESS_HELMFILE_PATH = APPHOME + "/apps/ingress_nginx/nginx.yaml"
-    else:
-        INGRESS_HELMFILE_PATH = APPHOME + "/apps/ingress_pomerium/pomerium.yaml"
+from .helepers import CONFIG_JSON, APPHOME, ROOT_CERT_PATH, ROOT_KEY_PATH
 
-if CONFIG_JSON['network']['loadbalancer'] == "cilium":
-    if CONFIG_JSON['monitoring']['enabled'] == "true":
-        INGRES_TYPE="environment=loadbalancer-monitoring"
-    else:
-        INGRES_TYPE="environment=loadbalancer"
+INGRESS_TYPE_LIST = ["nginx", "pomerium"]
+
+INGRESS_TYPE = CONFIG_JSON['ingress']['driver']
+
+if CONFIG_JSON['sso']['enabled'] != "true":
+    print("# SSO is not enabled. Installing Nginx Ingress controller")
+    INGRESS_TYPE = "nginx"
+    
+if CONFIG_JSON['network']['driver'] == "cilium-helm":
+    if CONFIG_JSON['network']['loadbalancer'] == "cilium":
+        if CONFIG_JSON['monitoring']['enabled'] == "true":
+            INGRESS_LABEL="environment=loadbalancer-monitoring"
+        else:
+            INGRESS_LABEL="environment=loadbalancer"
 else:
     if CONFIG_JSON['monitoring']['enabled'] == "true":
-        INGRES_TYPE="environment=nodeport-monitoring"
+        INGRESS_LABEL="environment=nodeport-monitoring"
     else:
-        INGRES_TYPE="environment=nodeport"
+        INGRESS_LABEL="environment=nodeport"
 
 POMERIUM_ISSUER_PATH = APPHOME + "/apps/ingress_pomerium/pomerium-cert.yaml"
 
@@ -63,23 +58,44 @@ else:
 #############################################################################
 
 def install_ingress():
-    if INGRESS_TYPE == "nginx" or INGRESS_TYPE == "pomerium":
-        if CONFIG_JSON['sso']['enabled'] != "true":
-            print("# SSO is not enabled. Installing Nginx Ingress controller")
+    HELMFILE_PATH = which("helmfile")
+    KUBECTL_PATH = which("kubectl")
+    MINIKUBE_PATH = which("minikube")
 
-        KUBECTL_PATH = which("kubectl")
-        RUN_KUBECTL = KUBECTL_PATH + f" apply -f " + POMERIUM_ISSUER_PATH
-        run_command_stdout(RUN_KUBECTL)
- 
-        HELMFILE_PATH = which("helmfile")
-        RUN_COMMAND = HELMFILE_PATH + " apply -f " + INGRESS_HELMFILE_PATH + " -l " + INGRES_TYPE
-        print("# Install Ingress Controller")
-        run_command_stdout(RUN_COMMAND)
+    if INGRESS_TYPE in INGRESS_TYPE_LIST:          
+        if INGRESS_TYPE == "nginx":
+            if CONFIG_JSON['network']['driver'] == "cilium-helm" \
+                and CONFIG_JSON['network']['loadbalancer'] == "cilium":
+                    INGRESS_HELMFILE_PATH = APPHOME + "/apps/ingress_nginx/nginx.yaml"
+                    
+                    RUN_COMMAND = HELMFILE_PATH + " apply -q -f " + INGRESS_HELMFILE_PATH + " -l " + INGRESS_LABEL
+                    print("# Install Ingress Controller")
+                    run_command_stdout(RUN_COMMAND)
+            else:
+                MINIKUBE_COMMAND = MINIKUBE_PATH + " -p kdev addons enable ingress"
+                print("# Install Ingress Controller")
+                run_command_stdout(MINIKUBE_COMMAND)
+            
+        elif INGRESS_TYPE == "pomerium":
+            INGRESS_HELMFILE_PATH = APPHOME + "/apps/ingress_pomerium/pomerium.yaml"
+
+            RUN_KUBECTL = KUBECTL_PATH + f" apply -f " + POMERIUM_ISSUER_PATH
+            run_command_stdout(RUN_KUBECTL)
+    
+            RUN_COMMAND = HELMFILE_PATH + " apply -q -f " + INGRESS_HELMFILE_PATH + " -l " + INGRESS_LABEL
+            print("# Install Ingress Controller")
+            run_command_stdout(RUN_COMMAND)
 
 def remove_ingress():
-    if INGRESS_TYPE == "nginx" or INGRESS_TYPE == "pomerium":
+    if INGRESS_TYPE in INGRESS_TYPE_LIST:
+        if INGRESS_TYPE == "nginx":
+            INGRESS_HELMFILE_PATH = APPHOME + "/apps/ingress_nginx/nginx.yaml"
+
+        elif INGRESS_TYPE == "pomerium":
+            INGRESS_HELMFILE_PATH = APPHOME + "/apps/ingress_pomerium/pomerium.yaml"
+        
         HELMFILE_PATH = which("helmfile")
-        RUN_COMMAND = HELMFILE_PATH + " destroy -f " + INGRESS_HELMFILE_PATH + " -l " + INGRES_TYPE
+        RUN_COMMAND = HELMFILE_PATH + " destroy -q -f " + INGRESS_HELMFILE_PATH + " -l " + INGRESS_LABEL
         print("# Remove Ingress Controller")
         run_command_stdout(RUN_COMMAND)
 
@@ -89,20 +105,20 @@ def remove_ingress():
 
 def install_cert_manager():
     HELMFILE_PATH = which("helmfile")
-    RUN_COMMAND = HELMFILE_PATH + " apply -f " + CM_HELMFILE_PATH + " -l " + CM_TYPE
+    RUN_COMMAND = HELMFILE_PATH + " apply -q -f " + CM_HELMFILE_PATH + " -l " + CM_TYPE
     print("# Install cert-manager")
     run_command_stdout(RUN_COMMAND)
     
-    print("# Install reflector")
-    RUN_COMMAND = HELMFILE_PATH + " apply -f " + REFLECTOR_HELMFILE_PATH
+    print("## Install reflector")
+    RUN_COMMAND = HELMFILE_PATH + " apply -q -f " + REFLECTOR_HELMFILE_PATH
     run_command_stdout(RUN_COMMAND)
 
     print("## Trust Manager")
-    RUN_COMMAND = HELMFILE_PATH + " apply -f " + TM_HELMFILE_PATH + " -l " + TM_TYPE
+    RUN_COMMAND = HELMFILE_PATH + " apply -q -f " + TM_HELMFILE_PATH + " -l " + TM_TYPE
     run_command_stdout(RUN_COMMAND)
 
     print("## CA Injector")
-    RUN_COMMAND = HELMFILE_PATH + " apply -f " + CAI_HELMFILE_PATH + " -l " + TM_TYPE
+    RUN_COMMAND = HELMFILE_PATH + " apply -q -f " + CAI_HELMFILE_PATH + " -l " + TM_TYPE
     run_command_stdout(RUN_COMMAND)
 
     print("## CA, Cert Bundle, Issuers")
@@ -129,6 +145,6 @@ def remove_cert_manager():
     run_command_stdout(RUN_KUBECTL)
 
     HELMFILE_PATH = which("helmfile")
-    RUN_COMMAND = HELMFILE_PATH + " destroy -f " + CM_HELMFILE_PATH + " -l " + CM_TYPE
+    RUN_COMMAND = HELMFILE_PATH + " destroy -q -f " + CM_HELMFILE_PATH + " -l " + CM_TYPE
     run_command_stdout(RUN_COMMAND)
 

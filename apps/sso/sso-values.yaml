@@ -28,13 +28,3 @@ externalDatabase:
 extraEnvVars:
   - name: KEYCLOAK_DATABASE_VENDOR
     value: "dev-file"
-#  - name: KEYCLOAK_EXTRA_ARGS
-#    value: "--import-realm"
-#extraVolumeMounts:
-#- name: config-volume
-#  mountPath: /opt/bitnami/keycloak/data/import/realm.json
-#  subPath: realm.json
-#extraVolumes:
-#- name: config-volume
-#  configMap:
-#    name: keycloak-realm-config

@@ -4,6 +4,9 @@ repositories:
 - name: metrics-server
   url: https://kubernetes-sigs.github.io/metrics-server/
 
+helmDefaults:
+  wait: true
+
 releases:
 - name: kubedash
   namespace: dashboard-system

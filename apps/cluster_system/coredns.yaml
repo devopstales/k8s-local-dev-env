@@ -2,9 +2,22 @@ repositories:
 - name: coredns
   url: https://coredns.github.io/helm
 
+helmDefaults:
+  wait: true
+
 releases:
 - name: external-coredns
   namespace: cluster-system
   chart: coredns/coredns
+  labels:
+    environment: loadbalancer
   values:
-   - coredns-values.yaml
+   - coredns-lb-values.yaml
+
+- name: external-coredns
+  namespace: cluster-system
+  chart: coredns/coredns
+  labels:
+    environment: loadbalancer-monitoring
+  values:
+   - coredns-lb-m-values.yaml

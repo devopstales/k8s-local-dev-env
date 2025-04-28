@@ -4,6 +4,9 @@ repositories:
 - name: vault-config-operator
   url: https://redhat-cop.github.io/vault-config-operator
 
+helmDefaults:
+  wait: true
+
 releases:
 - name: hashicorp-vault
   namespace: vault-system

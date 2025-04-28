@@ -1,0 +1,39 @@
+ui:
+  enabled: true
+  networkPolicy:
+    enabled: true
+    ingress: []
+    egress:
+      - ports:
+          - protocol: TCP
+            port: 6443
+  ingress:
+    enabled: true
+    annotations:
+      ingress.pomerium.io/allow_public_unauthenticated_access: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: /$1
+    hosts:
+      - host: kyverno.kdev.intra
+        paths:
+          - path: '/(.*)'
+plugin:
+  kyverno:
+    enabled: true
+    networkPolicy:
+      enabled: true
+      egress:
+        - to:
+          ports:
+            - protocol: TCP
+              port: 6443
+      ingress: []
+  trivy:
+    enabled: true
+    networkPolicy:
+      enabled: true
+      egress: []
+      ingress: []
+target:
+  loki:
+    host: 'http://loki.monitoring:3000'
+    skipExistingOnStartup: true

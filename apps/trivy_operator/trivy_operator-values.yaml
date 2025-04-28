@@ -1,0 +1,23 @@
+operator:
+    replicas: 1
+    builtInTrivyServer: true
+    clusterSbomCacheEnabled: true
+    exposedSecretScannerEnabled: true
+    scannerReportTTL: "24h"
+    metricsFindingsEnabled: true
+    metricsVulnIdEnabled: true
+    metricsExposedSecretInfo: true
+    metricsConfigAuditInfo: true
+    metricsRbacAssessmentInfo: true
+    metricsInfraAssessmentInfo: true
+    metricsImageInfo: true
+    metricsClusterComplianceInfo: true
+trivy:
+    ignoreUnfixed: true
+    # The secret has to be named "trivy-operator-trivy-config"
+    existingSecret: true
+    server:
+      replicas: 1
+compliance:
+    cron: 0 0 * * *
+

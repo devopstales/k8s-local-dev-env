@@ -2,6 +2,9 @@ repositories:
 - name: pomerium
   url: https://helm.pomerium.io
 
+helmDefaults:
+  wait: true
+
 releases:
 - name: pomerium
   namespace: ingress-system

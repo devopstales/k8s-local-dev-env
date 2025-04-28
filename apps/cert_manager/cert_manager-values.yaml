@@ -1,4 +1,5 @@
-installCRDs: true
+crds:
+  enabled: true
 clusterResourceNamespace: "ingress-system"
 resources:
   requests:

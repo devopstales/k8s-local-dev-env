@@ -1,0 +1,83 @@
+ui:
+  enabled: true
+  networkPolicy:
+    enabled: true
+    ingress: []
+    egress:
+      - ports:
+          - protocol: TCP
+            port: 6443
+  ingress:
+    enabled: true
+    annotations:
+      ingress.pomerium.io/allow_public_unauthenticated_access: "true"
+      nginx.ingress.kubernetes.io/rewrite-target: /$1
+    hosts:
+      - host: kyverno.kdev.intra
+        paths:
+          - path: '/(.*)'
+plugin:
+  kyverno:
+    enabled: true
+    networkPolicy:
+      enabled: true
+      egress:
+        - to:
+          ports:
+            - protocol: TCP
+              port: 6443
+      ingress: []
+  trivy:
+    enabled: true
+    networkPolicy:
+      enabled: true
+      egress: []
+      ingress: []
+target:
+  loki:
+    host: 'http://loki.monitoring:3000'
+    skipExistingOnStartup: true
+metrics:
+  enabled: true
+monitoring:
+  enabled: true
+  serviceMonitor:
+    # HonorLabels chooses the metrics labels on collisions with target labels
+    honorLabels: false
+    # allow to override the namespace for serviceMonitor
+    labels: {}
+  grafana:
+    # namespace for configMap of grafana dashboards
+    namespace: monitoring-system
+    dashboards:
+      # Enable the deployment of grafana dashboards
+      enabled: true
+      # Label to find dashboards using the k8s sidecar
+      label: grafana_dashboard
+      value: '1'
+      labelFilter: []
+      multicluster:
+        enabled: false
+        label: cluster
+      enable:
+        overview: true
+        policyReportDetails: true
+        clusterPolicyReportDetails: true
+    folder:
+      # Annotation to enable folder storage using the k8s sidecar
+      annotation: grafana_folder
+      # Grafana folder in which to store the dashboards
+      name: Policy Reporter
+    datasource:
+      label: Prometheus
+      pluginId: prometheus
+      pluginName: Prometheus
+
+    # -- create GrafanaDashboard custom resource referencing to the configMap.
+    # according to https://grafana-operator.github.io/grafana-operator/docs/examples/dashboard_from_configmap/readme/
+    grafanaDashboard:
+      enabled: false
+      folder: kyverno
+      allowCrossNamespaceImport: true
+      matchLabels:
+        dashboards: 'grafana'

@@ -4,31 +4,55 @@ import yaml
 
 from .helepers import (
     which,
-    run_command_stdout, 
-    CONFIG_JSON, 
-    APPHOME
+    run_command_stdout
 )
 
+from .docker import get_hots_ip, get_master_ip
+
 from .docker import get_docker_network, get_loadbalancer_subnet,\
-    get_hots_ip
+    get_hots_ip, get_master_ip
+
 from ipaddress import ip_network
 
-CILIUM_CONFIG_PATH = APPHOME + "/apps/cni_cilium/cilium-values.yaml"
-CILIUM_HELMFILE_PATH = APPHOME + "/apps/cni_cilium/cilium.yaml"
-MONITORING_NS_PATH = APPHOME + "/apps/monitoring/ns.yaml"
-CILIUM_IP_PUUL_CONFIG_PATH = APPHOME + "/apps/lb_cilium/cilium-pool.yaml"
-CILIUM_BGP_POLICY_PATH = APPHOME + "/apps/lb_cilium/bgp-policy.yaml"
+#############################################################################
+# Variables
+#############################################################################
 
+from .helepers import CONFIG_JSON, APPHOME
+
+MONITORING_NS_PATH = APPHOME + "/apps/monitoring/ns.yaml"
+
+CILIUM_HELMFILE_PATH = APPHOME + "/apps/cni_cilium/cilium.yaml"
+CILIUM_IP_PUUL_CONFIG_PATH = APPHOME + "/apps/lb_cilium/cilium-pool.yaml"
+CILIUM_CONFIG_PATH = APPHOME + "/apps/cni_cilium/cilium-values.yaml"
+
+
+FRR_CONFIG_PATH = APPHOME + "/config/frr/frr.conf"
+LBPOOL_FILE_PATH =  APPHOME + "/config/cilium/cilium-pool.yaml"
+CILIUM_BGP_POLICY_PATH = APPHOME + "/config/cilium/bgp-policy.yaml"
+
+#############################################################################
+# Functions
+#############################################################################
+
+def start_cni_network(CNI_DRIVER):
+    if CNI_DRIVER == "false": # => cilium-helm or cilium cni with LB
+        gen_cilium_config()
+        install_cilium()
+        install_loadbalancer()
+    
 #############################################################################
 # Cilium Configs
 #############################################################################
 
 def gen_cilium_config():
     print("# Generating Cilium Config")
+    MASTER_IP = get_master_ip()
+
     cilium_base_config = {
         "kubeProxyReplacement": True,
-        "k8sServiceHost": f"{CONFIG_JSON['network']['api_host']}",
-        "k8sServicePort": f"{CONFIG_JSON['network']['api_port']}",
+        "k8sServiceHost": f"{MASTER_IP}",
+        "k8sServicePort": "8443",
         "rollOutCiliumPods": True,
         "ipv4": {
             "enabled": True,
@@ -110,7 +134,7 @@ def gen_cilium_config():
     }
 
     if CONFIG_JSON['service_mesh']["driver"] == "cilium":
-        #                     "mode": "required",
+        #   "mode": "required",
         cilium_base_config.update(
             {
                 "authentication": {
@@ -278,9 +302,10 @@ def gen_cilium_config():
             "apiVersion": "cilium.io/v2alpha1",
             "kind": "CiliumLoadBalancerIPPool",
             "metadata": {
-                "name": "kind-pool"
+                "name": "base-pool"
             },
             "spec": {
+                "allowFirstLastIPs": "No",
                 "blocks": [
                     {
                         "cidr": loadbalancer_cidr
@@ -314,33 +339,18 @@ def gen_cilium_config():
         yaml.dump(cilium_base_config, yaml_file, default_flow_style=False)
 
 #############################################################################
-# Cilium
-#############################################################################
-
-def install_cilium():
-    KUBECTL_PATH = which("kubectl")
-    RUN_KUBECTL = KUBECTL_PATH + " apply -f " + MONITORING_NS_PATH
-    run_command_stdout(RUN_KUBECTL)
-
-    HELMFILE_PATH = which("helmfile")
-    RUN_COMMAND = HELMFILE_PATH + " apply -f " + CILIUM_HELMFILE_PATH
-    print("# Install Cilium")
-    run_command_stdout(RUN_COMMAND)
-
-#############################################################################
 # Cilium LB
 #############################################################################
 
 def install_loadbalancer():
-    print("# Install LoadBalancer")
     if CONFIG_JSON['network']['loadbalancer'] == "cilium":
+        print("# Install LoadBalancer")
         if CONFIG_JSON['network']['loadbalancer_mode'] == "l2":
-            network_data = get_docker_network("kind")
+            network_data = get_docker_network()
             docker_network_subnet = network_data["IPAM"]['Config'][0]['Subnet']
             network_subnets = list(ip_network(docker_network_subnet).subnets(new_prefix=24))
             lb_network_subnet = str(network_subnets[-1])
 
-            LBPOOL_FILE_PATH =  APPHOME + "/apps/lb_cilium/cilium-pool.yaml"
             ANNOUNCEMET_FILE_PATH =  APPHOME + "/apps/lb_cilium/l2-announcement.yaml"
             TEST_FILE_PATH = APPHOME + "/apps/lb_cilium/lb-test.yaml"
 
@@ -348,7 +358,7 @@ def install_loadbalancer():
                 "apiVersion": "cilium.io/v2alpha1",
                 "kind": "CiliumLoadBalancerIPPool",
                 "metadata":{
-                    "name": "kind-pool",
+                    "name": "base-pool",
                 },
                 "spec": {
                     "blocks":[
@@ -369,3 +379,57 @@ def install_loadbalancer():
             run_command_stdout(RUN_KUBECTL)
             RUN_KUBECTL = KUBECTL_PATH + " apply -f " + TEST_FILE_PATH
             run_command_stdout(RUN_KUBECTL)
+            
+        if CONFIG_JSON['network']['loadbalancer_mode'] == "bgp":
+            generate_frr_config()
+            KUBECTL_PATH = which("kubectl")
+            RUN_KUBECTL = KUBECTL_PATH + " apply -f " + CILIUM_IP_PUUL_CONFIG_PATH
+            run_command_stdout(RUN_KUBECTL)
+            RUN_KUBECTL = KUBECTL_PATH + " apply -f " + CILIUM_BGP_POLICY_PATH
+            run_command_stdout(RUN_KUBECTL)
+
+
+#############################################################################
+# Cilium CNI
+#############################################################################
+
+def install_cilium():
+    KUBECTL_PATH = which("kubectl")
+    RUN_KUBECTL = KUBECTL_PATH + " apply -f " + MONITORING_NS_PATH
+    run_command_stdout(RUN_KUBECTL)
+
+    HELMFILE_PATH = which("helmfile")
+    RUN_COMMAND = HELMFILE_PATH + " apply -q -f " + CILIUM_HELMFILE_PATH
+    print("# Install Cilium")
+    run_command_stdout(RUN_COMMAND)
+    
+#############################################################################
+# FRR Router
+#############################################################################
+
+def generate_frr_config():
+    HOST_IP = get_hots_ip()
+    MATER_IP = get_master_ip()
+    frr_config =  f"""!
+log syslog notifications
+frr defaults traditional
+!
+router bgp 64513
+no bgp ebgp-requires-policy
+bgp router-id {HOST_IP}
+!
+neighbor {MATER_IP} remote-as 64512
+neighbor {MATER_IP} update-source {MATER_IP}
+neighbor {MATER_IP} soft-reconfiguration inbound
+!
+address-family ipv4 unicast
+neighbor {MATER_IP} next-hop-self
+exit-address-family
+!
+address-family ipv6 unicast
+exit-address-family
+!
+line vty
+"""
+    with open(FRR_CONFIG_PATH, 'w') as file:
+        file.write(frr_config)

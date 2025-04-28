@@ -4,10 +4,15 @@ repositories:
 - name: epamedp
   url: https://epam.github.io/edp-helm-charts/stable
 
+helmDefaults:
+  wait: true
+
 releases:
 - name: keycloak-operator
   namespace: auth-system
   chart: epamedp/keycloak-operator
+  labels:
+    environment: simple
 - name: keycloak
   namespace: auth-system
   chart: bitnami/keycloak
@@ -15,17 +20,16 @@ releases:
     environment: simple
   values:
    - sso-values.yaml
-#- name: keycloak
-#  namespace: auth-system
-#  chart: bitnami/keycloak
-#  labels:
-#    environment: monitoring
-#  values:
-#   - sso-m-values.yaml
-#- name: keycloak
-#  namespace: auth-system
-#  chart: bitnami/keycloak
-#  labels:
-#    environment: export
-#  values:
-#   - sso-export-values.yaml
+
+- name: keycloak-operator
+  namespace: auth-system
+  chart: epamedp/keycloak-operator
+  labels:
+    environment: monitoring
+- name: keycloak
+  namespace: auth-system
+  chart: bitnami/keycloak
+  labels:
+    environment: monitoring
+  values:
+   - sso-m-values.yaml

@@ -1,8 +1,20 @@
 repositories:
 - name: kyverno
-  url: https://helm.pomerium.io
+  url: https://kyverno.github.io/kyverno/
+- name: policy-reporter
+  url: https://kyverno.github.io/policy-reporter
+
+helmDefaults:
+  wait: true
 
 releases:
+- name: policy-reporter
+  namespace: kyverno-system
+  chart: policy-reporter/policy-reporter
+  labels:
+    environment: simple
+  values:
+   - kyvernoui-values.yaml
 - name: kyverno
   namespace: kyverno-system
   chart: kyverno/kyverno
@@ -10,8 +22,16 @@ releases:
     environment: simple
   values:
    - kyverno-values.yaml
+
+- name: policy-reporter
+  namespace: kyverno-system
+  chart: policy-reporter/policy-reporter
+  labels:
+    environment: monitoring
+  values:
+   - kyvernoui-m-values.yaml
 - name: kyverno
-  namespace: ingress-system
+  namespace: kyverno-system
   chart: kyverno-system
   labels:
     environment: monitoring

@@ -1,82 +1,54 @@
-# k8s-local-dev-env
+# k8s-local-dev-env ☸️ <!-- omit in toc -->
 
-A python based script that starts a local kind based Kubernetes Development environment and Install apps.
+![kubernetes-localdev-cover](https://d33vo9sj4p3nyc.cloudfront.net/kubernetes-localdev/kubernetes-localdev-cover.png?dummy=null)
 
-## Features
+## Required packages <!-- omit in toc -->
 
-* Generate self signed certificate authority
-* Start kind Cluster
-  * Import image to kind cluster
-  * Run a separate dns server for ingress dns resolution
-    * CoreDNS
-      * Local DNS server on a loadbalancer service
-    * external-dns
-      * Generating DNS records for ingress hostnames in local dns server
-    * Federated DNS:
-      * Allow ingress hostname dns resolution from kubernetes
-  * OpenID Authentication
-* Start apps
-  * Cilium CNI
-  * LoadBalancer
-    * Cilium L2 LoadBalancer
-  * Cert utilities
-    * Cert-Manager
-      * Generate certs under self signed CA
-    * Reflector
-      * Automaticle copy CA certificates for all namespace
-    * Trust Manager
-      * Generating Trust CA bundle with self signed CA
-    * CA Injector
-      * Inject Trust CA bundle into pods
-  * Ingress Controller
-    * Nginx
-      * Node port service
-      * LoadBalancer service
-    * Pomerium
-      * Node port service
-      * LoadBalancer service
-      * OpenID Authentication
-    * Clium Nginx
-    * Cilium Gateway API
-  * Keycloak
-    * OpenID Authentication Provider
-  * KudeDash
-    * KubeDash is a general purpose, web-based UI for Kubernetes clusters.
-
-## Required packages
-
-### Ubuntu 20.04
+#### 1. [Install docker](https://docs.docker.com/engine/install/ubuntu/) <!-- omit in toc -->
 
 ```bash
-apt update
-apt-get install build-essential libtool pkgconf libzstd-dev liblzma-dev libssl-dev autoconf
-apt-get install python3 python3-pip
+# update packages
+sudo apt-get update
+sudo apt-get upgrade
 
-pip3 install -r requirements.txt
+sudo apt-get install \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+ 
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# run with sudo
+sudo usermod -aG docker ${USER}
+su - ${USER}
+sudo chmod 666 /var/run/docker.sock
 ```
 
-* kind
-* docker
-* kubectl
-* helm
-* helmfile
-
-### OSX
+#### 2. [Install brew](https://brew.sh/) <!-- omit in toc -->
 
 ```bash
-brew install autoconf automake libtool
-brew install chipmk/tap/docker-mac-net-connect
-sudo brew services start chipmk/tap/docker-mac-net-connect
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-pip3 install -r requirements.txt
+brew install kubernetes-cli
+brew install kubectx
+brew install helm
+brew install helmfile
+brew install minikube
+brew install cilium-cli
+
+helm plugin install https://github.com/databus23/helm-diff
 ```
 
-Start docker dasktop
-
-## Required Kernel modules:
+#### 4. Instal frr (Optional) <!-- omit in toc -->
 
 ```bash
-sudo modprobe xt_socket -v
-
-lsmod | grep xt_socket
 ```

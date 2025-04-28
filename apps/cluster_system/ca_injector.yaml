@@ -2,6 +2,9 @@ repositories:
 - name: ca-injector
   url: https://microcumulus.github.io/ca-injector
 
+helmDefaults:
+  wait: true
+
 releases:
 - name: ca-injector
   namespace: cluster-system

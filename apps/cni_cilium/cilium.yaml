@@ -2,6 +2,9 @@ repositories:
 - name: cilium
   url: https://helm.cilium.io/
 
+helmDefaults:
+  wait: true
+
 releases:
 - name: cilium
   namespace: kube-system

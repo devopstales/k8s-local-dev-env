@@ -36,14 +36,14 @@ servers:
         fallthrough
 prometheus:
   service:
-    enabled: false
+    enabled: true
     annotations:
       prometheus.io/scrape: "true"
       prometheus.io/port: "9153"
     selector: {}
   monitor:
-    enabled: false
+    enabled: true
     additionalLabels: {}
-    namespace: ""
+    namespace: "monitoring-system"
     interval: ""
     selector: {}

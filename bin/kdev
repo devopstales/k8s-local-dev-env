@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
 
-import argparse, platform
+import argparse
 
-from functions.helepers import CONFIG_JSON, manage_cert
+from functions.helepers import manage_cert
 
-from functions.message import \
-    print_messages
-    
 from functions.docker import \
-    create_docker_network, delete_docker_network, \
-    start_registry, stop_registry, get_loadbalancer_subnet, \
-    generate_frr_config
+    create_docker_network, delete_docker_network
 
-from functions.kind import \
-    gen_kind_config, delete_kind_config, \
-    start_kind, delete_kind, load_docker_image
+from functions.minikube import \
+    start_minikube, stop_minikube,\
+    delete_minikube, pause_minikube, load_docker_image, \
+    start_registry, stop_registry
 
-from functions.cilium import \
-    gen_cilium_config, install_cilium, \
-    install_loadbalancer
+from functions.cni import start_cni_network
+
+from functions.apps import deploy_crds, \
+    deploy_prometheus, \
+    create_sso_server, \
+    create_kubedash_server, remove_kubedash_server
 
 from functions.dns import \
     create_dns_server
@@ -26,184 +25,106 @@ from functions.dns import \
 from functions.ingress import \
     install_ingress, remove_ingress, \
     install_cert_manager, remove_cert_manager
-
-#############################################################################
-# Apps
-#############################################################################
-
-from functions.apps import deploy_crds, \
-    deploy_prometheus, create_sso_server, \
-    create_kubedash_server, remove_kubedash_server
-
-
+    
 #############################################################################
 # Variables
 #############################################################################
 
-DEPENDENCIES = ["docker", "kind", "kubectl", "helm", "helmfile", "cilium"]
-KERNEL_MODULES = ["xt_socket"]
+from functions.helepers import CONFIG_JSON
 
-from colorama import init as colorama_init
-from colorama import Fore
-from colorama import Style
-
-colorama_init()
+if CONFIG_JSON['network']['driver'] == "cilium":
+    if CONFIG_JSON['network']['loadbalancer'] == "cilium":
+        CNI_DRIVER = "false"
+    else:
+        CNI_DRIVER = "cilium"
+elif CONFIG_JSON['network']['driver'] == "cilium-helm":
+        CNI_DRIVER = "false"
+elif CONFIG_JSON['network']['driver'] == "calico":
+        CNI_DRIVER = "calico"
+elif CONFIG_JSON['network']['driver'] == "flannel":
+        CNI_DRIVER = "flannel"
+elif CONFIG_JSON['network']['driver'] == "kindnet":
+        CNI_DRIVER = "kindnet"
+elif CONFIG_JSON['network']['driver'] == "bridge":
+        CNI_DRIVER = "bridge"
+else:
+        CNI_DRIVER = "flannel"
 
 #############################################################################
 # Main functions
 #############################################################################
 
 def up_functions():
-    # Generate cert
     manage_cert()
-    if platform.system() != 'Darwin':
-        from functions.helepers import dependency_test
-        dependency_test(DEPENDENCIES, KERNEL_MODULES)
     create_docker_network()
-    if CONFIG_JSON['registry']['enabled'] == "true":
-        start_registry()
-    gen_kind_config()
-    start_kind()
-    if CONFIG_JSON['network']['loadbalancer'] == "cilium":
-        if CONFIG_JSON['network']['loadbalancer_mode'] == "bgp":
-            generate_frr_config()
+    start_minikube(CNI_DRIVER)
+    start_cni_network(CNI_DRIVER) # loadbalancer, frr-config
     deploy_crds() # anmespaces, crds for: prometheus, gatewayApi, cert-manager, etc
 
-def down_functions():
-    delete_kind()
-    delete_kind_config()
-    if CONFIG_JSON['registry']['enabled'] == "true":
-        stop_registry()
+
+def delete_functions():
+    delete_minikube()
     delete_docker_network()
+    
+def stop_functions():
+    stop_minikube()
 
+def pause_functions():
+    pause_minikube()
+    
 def enable_function(addon):
-    if addon == "certificate":
-        manage_cert()
-
-    if addon == "registry":
-        if CONFIG_JSON['network']['loadbalancer'] == "cilium":
-            start_registry()
-        else:
-            print(f"Loadbalancer in not enable in config")
-
-    if addon == "cilium":
-        if CONFIG_JSON['network']['loadbalancer'] == "cilium":
-            if CONFIG_JSON['network']['loadbalancer_mode'] == "bgp":
-                generate_frr_config()
-        gen_cilium_config()
-        install_cilium()
-
-    if addon == "ingress":
+    if addon == "all":
+        install_cert_manager()
         install_ingress()
+        if CONFIG_JSON['sso']['enabled'] == 'true':
+            create_sso_server()
+        if CONFIG_JSON['network']['local_dns_server'] == "true":
+            create_dns_server()
 
-    if addon == "cert-manager":
+    elif addon == 'network':
+        start_cni_network(CNI_DRIVER)
+
+    elif addon == "dns":
+        if CONFIG_JSON['network']['local_dns_server'] == "true":
+                create_dns_server()
+
+    elif addon == "cert-manager":
         install_cert_manager()
 
-    if addon == "dns":
-        if CONFIG_JSON['network']['local_dns_server'] == "true":
-            if CONFIG_JSON['network']['loadbalancer'] == "cilium":
-                create_dns_server()
-            else:
-                print(f"Loadbalancer in not enable in config")
+    elif addon == "ingress":
+        install_ingress()
 
-    if addon == "sso":
+    elif addon == "sso":
         if CONFIG_JSON['sso']['enabled'] == 'true':
             create_sso_server()
         else:
             print(f"SSO in not enable in config")
 
-    if addon == "kubedash":
+    elif addon == "kubedash":
         if CONFIG_JSON['sso']['enabled'] == 'true':
             create_sso_server()
             create_kubedash_server()
         else:
             print(f"SSO in not enable in config")
-
-    if addon == "loadbalancer":
-        if CONFIG_JSON['network']['loadbalancer'] == "cilium":
-            install_loadbalancer()
-            if CONFIG_JSON['network']['local_dns_server'] == "true":
-                create_dns_server()
+            
+    elif addon == "registry":
+        if CONFIG_JSON['network']['driver'] == "cilium-helm":
+            if CONFIG_JSON['network']['loadbalancer'] == "cilium":
+                start_registry()
+            else:
+                print(f"Loadbalancer in not enable in config")
         else:
-            print(f"Loadbalancer in not enable in config")
-
-    elif addon == "all":
-        gen_cilium_config()
-        install_cilium()
-        install_cert_manager()
-        if CONFIG_JSON['network']['loadbalancer'] == "cilium":
-            install_loadbalancer()
-            if CONFIG_JSON['network']['local_dns_server'] == "true":
-                create_dns_server()
-        else:
-            print(f"Loadbalancer in not enable in config")
-        if CONFIG_JSON['sso']['enabled'] == 'true':
-            create_sso_server()
-        install_ingress()
-
+            print(f"Loadbalancer type cilium is only available in cilium-helm cni type")
+            
+    else:
+        print("Addon : %s is invalid" % addon)
+        
 def disable_function(addon):
-    if addon == "ingress":
-        remove_ingress()
-
     if addon == "cert-manager":
         remove_cert_manager()
-
-    if addon == "registry":
-        stop_registry()
-
+        
     if addon == "kubedash":
         remove_kubedash_server()
-
-#############################################################################
-# status
-############################################################################# 
-
-def status_functions():
-    running_status = f"{Fore.GREEN}Running{Style.RESET_ALL}"
-    stopprd_status = f"{Fore.RED}Stopped{Style.RESET_ALL}"
-    enabled_status = f"{Fore.GREEN}Enabled{Style.RESET_ALL}"
-    disabled_status = f"{Fore.RED}Disabled{Style.RESET_ALL}"
-    loadbalancer_cidr = get_loadbalancer_subnet()
-
-    # add dns ip, reigistry ip,
-
-    print(f"""Cluster:
-    Status:         {running_status} # test cluster status
-    Api:            {Fore.YELLOW}{CONFIG_JSON['network']['api_host']}:{CONFIG_JSON['network']['api_port']}{Style.RESET_ALL}
-    CNI:            {CONFIG_JSON['network']['driver'] if CONFIG_JSON['network']['driver'] != 'none' else disabled_status}
-    Cluster CIDR:   {Fore.YELLOW}{CONFIG_JSON['network']['cluster_cidr']}{Style.RESET_ALL}
-    Service CIDR:   {Fore.YELLOW}{CONFIG_JSON['network']['service_cidr']}{Style.RESET_ALL}
-
-Docker:
-    CIDR:           {Fore.YELLOW}{CONFIG_JSON['network']['subnet']}{Style.RESET_ALL}
-    Registry:       {enabled_status if CONFIG_JSON['monitoring']['enabled'] == 'true' else disabled_status}
-
-Load Balancer:
-    Type:           {CONFIG_JSON['network']['loadbalancer'] if CONFIG_JSON['network']['loadbalancer'] != 'none' else disabled_status}
-    Mode:           {Fore.BLUE}{CONFIG_JSON['network']['loadbalancer_mode']}{Style.RESET_ALL}
-    CIDR:           {Fore.YELLOW}{loadbalancer_cidr}{Style.RESET_ALL}
-
-Ingress:
-    Type:           {enabled_status if CONFIG_JSON['registry']['enabled'] != 'true' else disabled_status}
-
-Service Mash:
-    Type:           {CONFIG_JSON['service_mesh']['driver'] if CONFIG_JSON['service_mesh']['driver'] != 'none' else disabled_status}
-    ApiGateway:     {CONFIG_JSON['service_mesh']['apigateway'] if CONFIG_JSON['service_mesh']['apigateway'] != 'none' else disabled_status}
-
-Addons:
-    Core DNS:       {enabled_status if CONFIG_JSON['network']['local_dns_server'] == 'true' and CONFIG_JSON['network']['loadbalancer'] == "cilium" else disabled_status} - Local DNS server on a load balancer service
-    External DNS:   {enabled_status if CONFIG_JSON['network']['local_dns_server'] == 'true' and CONFIG_JSON['network']['loadbalancer'] == "cilium" else disabled_status} - Generating DNS records for ingress hostnames in local DNS server
-    Federated DNS:  {enabled_status if CONFIG_JSON['network']['local_dns_server'] == 'true' and CONFIG_JSON['network']['loadbalancer'] == "cilium" else disabled_status} - Allow ingress hostname DNS resolution from kubernetes
-    Cert-Manager:   {enabled_status} - Generate certs under self signed CA
-    Trues Manager:  {enabled_status} - Generating Trust CA bundle with self signed CA
-    CA Injector:    {enabled_status} - Inject Trust CA bundle into pods
-    Reflector:      {enabled_status} - Automaticle copy CA certificates for all namespace
-    Keycloak:       {enabled_status if CONFIG_JSON['sso']['enabled'] == 'true' else disabled_status} - Keycloak is an open source identity and access management solution.
-    KubeDash:       {enabled_status if CONFIG_JSON['kubedash']['enabled'] == 'true' and CONFIG_JSON['sso']['enabled'] == 'true' else enabled_status} - KubeDash is a general purpose, web-based UI for Kubernetes clusters. 
-    Monitoring:     {enabled_status if CONFIG_JSON['monitoring']['enabled'] == 'true' else disabled_status} - Prometheus Operator for monitoring and logging
-    Observability:  {enabled_status if CONFIG_JSON['observability']['enabled'] == 'true' else disabled_status} - A lightweight Observability stack for taces and metrics
-""")
- 
 
 #############################################################################
 # argparser
@@ -211,38 +132,41 @@ Addons:
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--up", nargs='?', default=False, help="Create a new Kubernetes environment")
-parser.add_argument("--down", action="store_true", default=False, help="Destroy a Kubernetes environment")
+parser.add_argument("--down", action="store_true", default=False, help="Stop a Kubernetes environment")
+parser.add_argument("--stop", action="store_true", default=False, help="Stop a Kubernetes environment")
+parser.add_argument("--destroy", action="store_true", default=False, help="Destroy a Kubernetes environment")
+parser.add_argument("--pause", action="store_true", default=False, help="Pause a Kubernetes pods")
+
 parser.add_argument("--enable", action="store", default=False, help="Enable Kubernetes addon")
 parser.add_argument("--disable", action="store", default=False, help="Disable Kubernetes Addon")
-parser.add_argument("--status", action="store_true", default=False, help="Status of the k8s dev environment")
 
 parser.add_argument("--load-image", nargs=1, default=False, help="Load local docker image to kind cluster")
-parser.add_argument("--get-hosts", action="store", default=False, help="Get hosts file content")
 
 args = parser.parse_args()
-
-# print(args) ## Debug
-
+        
 if args.up or args.up == None:
     if args.up == "all":
         up_functions()
         enable_function(args.up)
-        print_messages(args.up)
+        #print_messages(args.up)
     else:
         up_functions()
-        print_messages("base")
+        #print_messages("base")
 
 if args.down:
-    down_functions()
-
-if args.status:
-    status_functions()
-
+    stop_functions()
+    
+if args.stop:
+    stop_functions()
+    
+if args.destroy:
+    delete_functions()
+    
+if args.pause:
+    pause_minikube()
+    
 if args.enable:
     enable_function(args.enable)
-
-if args.disable:
-    disable_function(args.disable)
-
+    
 if args.load_image:
     load_docker_image(args.load_image[0])

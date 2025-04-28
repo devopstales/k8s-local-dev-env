@@ -8,6 +8,12 @@ apps/lb_cilium/cilium-pool.yaml
 apps/lb_cilium/bgp-policy.yaml
 apps/cni_cilium/cilium-values.yaml
 
+
+config/cilium/*
+config/coredns/*
+config/frr/*
+!config/**/.gitkeep
+
 venv/**
 !venv/.gitkeep
 tmp
