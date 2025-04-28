@@ -26,6 +26,7 @@ tasks:
       - kind create cluster --config config/kind-config.yaml --name kdev
       - helmfile apply -f apps/cni/cilium/cilium.yaml --wait
       - helmfile apply -f apps/crd/prometheus/prometheus.yaml --wait
+      - kubectl apply -f apps/crd/gateway/v1.3.0_standard-install.yaml --wait
 
   install-ingress-nginx:
     desc: "Install Ingress NGINX"
@@ -37,7 +38,7 @@ tasks:
     cmds:
       - helmfile apply -f apps/cert/manager/cert_manager.yaml --wait
       - export CAROOT=$HOME/k8s-local-dev-env/.certs
-      - kubectl create secret tls ca-key-pair --cert=ca.crt=$CAROOT/rootCA.pem --cert=$CAROOT/cert.pem --key=$CAROOT/key.pem -n ingress-system
+      - kubectl get secret ca-key-pair -n ingress-system || kubectl create secret tls ca-key-pair --cert=ca.crt=$CAROOT/rootCA.pem --cert=$CAROOT/cert.pem --key=$CAROOT/key.pem -n ingress-system
       - kubectl apply -f apps/cert/manager/cert_manager-issuer.yaml --wait
       - helmfile apply -f apps/cert/reflector/reflector.yaml --wait
       - helmfile apply -f apps/cert/injector/ca_injector.yaml --wait
