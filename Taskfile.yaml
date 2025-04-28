@@ -28,8 +28,11 @@ tasks:
         ignore_error: true
       - cmd: sudo hosts remove authenticate.kdev.intra --force
         ignore_error: true
+      - cmd: sudo hosts remove sso.kdev.intra --force
+        ignore_error: true
       - sudo hosts add 127.0.0.1 cilium.kdev.intra
       - sudo hosts add 127.0.0.1 authenticate.kdev.intra
+      - sudo hosts add 127.0.0.1 sso.kdev.intra
       #- hosts
 
   up:

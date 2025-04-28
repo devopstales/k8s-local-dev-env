@@ -1,0 +1,15 @@
+repositories:
+- name: dex
+  url: https://charts.dexidp.io
+
+helmDefaults:
+  wait: true
+
+releases:
+- name: dex
+  namespace: auth-system
+  chart: dex/dex
+  labels:
+    environment: simple
+  values:
+   - dex-values.yaml

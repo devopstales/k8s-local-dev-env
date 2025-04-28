@@ -1,0 +1,67 @@
+config:
+  # Set it to a valid URL
+  issuer: https://sso.kdev.intra
+
+  storage:
+    type: sqlite3
+    config:
+      file: var/sqlite/dex.db
+
+  # Enable local users
+  enablePasswordDB: true
+  # Allow password grants with local users
+  oauth2:
+    passwordConnector: local
+
+  staticPasswords:
+    - email: "admin@kdev.intra"
+      # bcrypt hash of the string "password": $(echo password | htpasswd -BinC 10 admin | cut -d: -f2)
+      # user: admin
+      # password: admin
+      hash: "$2y$10$wAjcyA5bCqyLNOJVL3Fxdu3kDFW3r//5L8ewoU1vkh2gJMRGGxDCm"
+      username: "admin"
+      userID: "08a8684b-db88-4b73-90a9-3cd1661f5466"
+
+  # Setup clients
+  staticClients:
+    - id: k8s
+      secret: "1Y1BDvwweUiVL89VFePBe5zSMIpI54NM"
+      name: 'k8s'
+      redirectURIs:
+        - 'http://*.kdev.intra/*'
+        - 'https://*.kdev.intra/*'
+    - id: pomerium
+      secret: "y5q5jeEpEmL7aJh74Tgsb32aJz1LaKAh"
+      name: 'pomerium'
+      redirectURIs:
+        - 'https://authenticate.kdev.intra/oauth2/callback'
+    - id: grafana
+      secret: "blLT7cqamLqR9CriDn40gDhChgtRkT4F"
+      name: 'grafana'
+      redirectURIs:
+        - 'http://*.kdev.intra/*'
+        - 'https://*.kdev.intra/*'
+    - id: kubedash
+      secret: "nkBeJzvrBxzRfGNDJENrEvwtnqczGLzk"
+      name: 'kubedash'
+      redirectURIs:
+        - 'http://*.kdev.intra/*'
+        - 'https://*.kdev.intra/*'
+    - id: vault
+      secret: "jjlsKljsfKw9a2nnasvkafm82nLNFE73"
+      name: 'vault'
+      redirectURIs:
+        - 'https://vault.kdev.intra/ui/vault/auth/oidc/oidc/callback'
+        - 'https://vault.kdev.intra/oidc/oidc/callback'
+ingress:
+  enabled: true
+  annotations:
+    cert-manager.io/cluster-issuer: ca-issuer
+  hosts:
+    - host: sso.kdev.intra
+      paths:
+        - path: /
+  tls:
+    - hosts:
+        - sso.kdev.intra
+      secretName: dex-ingress-tls

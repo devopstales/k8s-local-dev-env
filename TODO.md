@@ -4,6 +4,7 @@
 * docker network [X]
   * kind start [X]
     * ingress port forward [X]
+  * minikube start [ ]
   * caching docker registry [ ]
 * CNI
   * cilium [X]
@@ -13,6 +14,9 @@
 * DNS ???
   * add to hostfile [X]
   * external dns [ ]
+    * https://github.com/kubernetes-sigs/external-dns/blob/master/docs/tutorials/pihole.md
+  * pihole [ ]
+    * https://github.com/MoJo2600/pihole-kubernetes/tree/main/charts/pihole
   * coredns [ ]
   * etcd [ ]
 * certificate [ ]
@@ -40,6 +44,10 @@
   * keycloak [ ]
   * keycloak operator [ ]
   * kubedash [ ]
+  * https://geek-cookbook.funkypenguin.co.nz/docker-swarm/traefik-forward-auth/
+  * https://geek-cookbook.funkypenguin.co.nz/docker-swarm/traefik-forward-auth/dex-static/
+  * https://dexidp.io/docs/connectors/local/
+  * https://github.com/coderanger/traefik-forward-auth-dex
 * app
   * dashboard
   * harbor registry ???
