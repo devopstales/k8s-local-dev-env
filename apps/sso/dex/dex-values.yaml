@@ -1,11 +1,24 @@
+ingress:
+  enabled: true
+  className: default
+  annotations:
+    cert-manager.io/cluster-issuer: ca-issuer
+  hosts:
+    - host: sso.kdev.intra
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts:
+        - sso.kdev.intra
+      secretName: dex-ingress-tls
+
 config:
   # Set it to a valid URL
   issuer: https://sso.kdev.intra
 
   storage:
     type: sqlite3
-    config:
-      file: var/sqlite/dex.db
 
   # Enable local users
   enablePasswordDB: true
@@ -30,9 +43,9 @@ config:
       redirectURIs:
         - 'http://*.kdev.intra/*'
         - 'https://*.kdev.intra/*'
-    - id: pomerium
+    - id: ingress
       secret: "y5q5jeEpEmL7aJh74Tgsb32aJz1LaKAh"
-      name: 'pomerium'
+      name: 'ingress'
       redirectURIs:
         - 'https://authenticate.kdev.intra/oauth2/callback'
     - id: grafana
@@ -53,15 +66,3 @@ config:
       redirectURIs:
         - 'https://vault.kdev.intra/ui/vault/auth/oidc/oidc/callback'
         - 'https://vault.kdev.intra/oidc/oidc/callback'
-ingress:
-  enabled: true
-  annotations:
-    cert-manager.io/cluster-issuer: ca-issuer
-  hosts:
-    - host: sso.kdev.intra
-      paths:
-        - path: /
-  tls:
-    - hosts:
-        - sso.kdev.intra
-      secretName: dex-ingress-tls

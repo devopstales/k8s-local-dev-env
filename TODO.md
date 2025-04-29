@@ -30,9 +30,9 @@
     * trust bundle [X]
 * Ingress
   * Nginx-ingress [X]
-  * pomerium
-    * pomerium - gateway api [ ]
-    * keycloak itegration [ ]
+  * traefik
+    * gateway api [ ]
+    * sso itegration [ ]
 * observinility
   * grafana
   * grafana operator
@@ -56,3 +56,4 @@
     * https://kind.sigs.k8s.io/docs/user/private-registries/#use-a-certificate
   * auditlog
     * https://kind.sigs.k8s.io/docs/user/auditing/
+  * OpenFGA

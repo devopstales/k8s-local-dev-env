@@ -264,7 +264,7 @@ data:
           "k8s" : [ ],
           "security-admin-console" : [ ],
           "admin-cli" : [ ],
-          "pomerium" : [ ],
+          "ingress" : [ ],
           "account-console" : [ ],
           "broker" : [ {
             "id" : "b501c9ce-d8cc-4ef7-95fe-2c12b30aa27c",
@@ -678,8 +678,8 @@ data:
         "optionalClientScopes" : [ "address", "phone", "offline_access", "microprofile-jwt" ]
       }, {
         "id" : "c16e63b4-84dd-436d-a98e-78a2371a86e2",
-        "clientId" : "pomerium",
-        "name" : "pomerium",
+        "clientId" : "ingress",
+        "name" : "ingress",
         "description" : "",
         "rootUrl" : "https://authenticate.kdev.intra",
         "adminUrl" : "",

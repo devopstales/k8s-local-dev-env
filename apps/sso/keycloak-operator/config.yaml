@@ -16,7 +16,7 @@ metadata:
   namespace: auth-system
 type: Opaque
 data:
-  pomerium: eTVxNWplRXBFbUw3YUpoNzRUZ3NiMzJhSnoxTGFLQWg=
+  ingress: eTVxNWplRXBFbUw3YUpoNzRUZ3NiMzJhSnoxTGFLQWg=
   k8s: MVkxQkR2d3dlVWlWTDg5VkZlUEJlNXpTTUlwSTU0Tk0=
   grafana: YmxMVDdjcWFtTHFSOUNyaURuNDBnRGhDaGd0UmtUNEY=
   kubedash: bmtCZUp6dnJCeHpSZkdOREpFTnJFdnd0bnFjekdMems=
@@ -113,14 +113,14 @@ spec:
 apiVersion: v1.edp.epam.com/v1
 kind: KeycloakClient
 metadata:
-  name: keycloakclient-pomerium
+  name: keycloakclient-ingress
   namespace: auth-system
 spec:
   realmRef:
     name: k8s-apps
     kind: KeycloakRealm
-  clientId: pomerium
-  secret: $keycloak-client-secrets:pomerium
+  clientId: ingress
+  secret: $keycloak-client-secrets:ingress
   webUrl: https://authenticate.kdev.intra
   redirectUris:
     - https://authenticate.kdev.intra/oauth2/callback

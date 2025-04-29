@@ -1,0 +1,104 @@
+hostNetwork: true
+
+service:
+  enabled: true
+  type: ClusterIP
+
+ports:
+  # Ports used by Traefik
+  traefik:
+    port: 9000
+  # Traefik listens on port 80 and 443
+  web:
+    port: 80
+  websecure:
+    port: 443
+
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: "default"
+gatewayClass:
+  enabled: true
+  name: "default"
+providers:
+  kubernetesCRD:
+    ingressClass: default
+  kubernetesIngress:
+    enabled: true
+    ingressClass: default
+# Allow the Gateway to expose HTTPRoute from all namespaces
+  kubernetesGateway:
+    enabled: false
+    gatewayClass: default
+gateway:
+  namespacePolicy: All
+
+# dashboard:
+# Create an IngressRoute for the dashboard
+ingressRoute:
+  dashboard:
+    enabled: true
+    # Custom match rule with host domain
+    matchRule: Host(`traefik.kdev.intra`)
+    entryPoints: ["web","websecure"]
+    tls:
+      secretName: traefik-ingress-tls 
+    # Add custom middlewares : authentication and redirection
+    middlewares:
+      - name: traefik-dashboard-auth
+
+# Create the custom middlewares used by the IngressRoute dashboard (can also be created in another way).
+# /!\ Yes, you need to replace "changeme" password with a better one. /!\
+extraObjects:
+  - apiVersion: v1
+    kind: Secret
+    metadata:
+      name: traefik-dashboard-auth-secret
+    type: kubernetes.io/basic-auth
+    stringData:
+      username: admin
+      password: admin
+
+  - apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      name: traefik-dashboard-auth
+    spec:
+      basicAuth:
+        secret: traefik-dashboard-auth-secret
+
+# plugins:
+experimental:
+    ##################################################################################
+    # https://plugins.traefik.io/plugins/6613338ea28c508f411a44d5/traefik-oidc
+    traefikoidc:
+      moduleName: github.com/lukaszraczylo/traefikoidc
+      version: v0.5.50  # Use the latest version
+    # example:
+    # --- 
+    # apiVersion: traefik.io/v1alpha1
+    # kind: Middleware
+    # metadata:
+    #   name: oidc-basic
+    #   namespace: traefik
+    # spec:
+    #   plugin:
+    #     traefikoidc:
+    #       providerURL: https://accounts.google.com
+    #       clientID: 1234567890.apps.googleusercontent.com
+    #       clientSecret: your-client-secret
+    #       sessionEncryptionKey: potato-secret-is-at-least-32-bytes-long
+    #       callbackURL: /oauth2/callback
+    #       logoutURL: /oauth2/logout
+    #       scopes:
+    #         - openid
+    #         - email
+    #         - profile
+    ##################################################################################
+    # https://plugins.traefik.io/plugins/62947364108ecc83915d7794/add-trace-id
+    traceid:
+      modulename: github.com/trinnylondon/traefik-add-trace-id
+      version: v0.1.5
+    ##################################################################################
+    # https://plugins.traefik.io/plugins/6335346ca4caa9ddeffda116/crowdsec-bouncer-traefik-plugin

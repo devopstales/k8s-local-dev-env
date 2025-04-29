@@ -1,0 +1,10 @@
+repositories:
+- name: coredns
+  url: https://coredns.github.io/helm
+
+releases:
+- name: external-coredns
+  namespace: dns-system
+  chart: coredns/coredns
+  values:
+   - coredns-values.yaml

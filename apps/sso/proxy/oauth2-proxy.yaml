@@ -1,0 +1,10 @@
+repositories:
+- name: oauth2-proxy
+  url: https://oauth2-proxy.github.io/manifests
+
+releases:
+- name: oauth2-proxy-ingress
+  namespace: ingress-system
+  chart: oauth2-proxy/oauth2-proxy
+  values:
+   - oauth2-proxy-values.yaml

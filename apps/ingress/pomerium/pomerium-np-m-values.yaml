@@ -2,8 +2,8 @@ authenticate:
   existingTLSSecret: pomerium-tls
   idp:
     provider: "oidc"
-    url: "https://keycloak.kdev.intra/realms/k8s-apps"
-    clientID: "pomerium"
+    url: "https://sso.kdev.intra/realms/k8s-apps"
+    clientID: "ingress"
     clientSecret: "y5q5jeEpEmL7aJh74Tgsb32aJz1LaKAh"
     serviceAccount: "pomerium-authenticate"
   ingress:

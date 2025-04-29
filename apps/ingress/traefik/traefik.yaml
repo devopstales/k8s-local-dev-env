@@ -1,0 +1,10 @@
+repositories:
+- name: traefik
+  url: https://traefik.github.io/charts
+
+releases:
+- name: ingress-traefik
+  namespace: ingress-system
+  chart: traefik/traefik
+  values:
+   - traefik-values.yaml

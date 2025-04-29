@@ -19,7 +19,7 @@ tasks:
       - brew install nss # if you use Firefox
       - sudo wget https://raw.github.com/xwmx/hosts/master/hosts -O /usr/local/bin/hosts && \
         sudo chmod +x /usr/local/bin/hosts && \
-        sudo hosts completions install
+        hosts completions install --download
 
   add-hosts:
     desc: "Add hosts"
@@ -30,9 +30,15 @@ tasks:
         ignore_error: true
       - cmd: sudo hosts remove sso.kdev.intra --force
         ignore_error: true
+      - cmd: sudo hosts remove traefik.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts remove oauth.kdev.intra --force
+        ignore_error: true
       - sudo hosts add 127.0.0.1 cilium.kdev.intra
       - sudo hosts add 127.0.0.1 authenticate.kdev.intra
       - sudo hosts add 127.0.0.1 sso.kdev.intra
+      - sudo hosts add 127.0.0.1 traefik.kdev.intra
+      - sudo hosts add 127.0.0.1 oauth.kdev.intra
       #- hosts
 
   up:
@@ -60,28 +66,35 @@ tasks:
       - helmfile apply -f apps/cert/trust/trust_manager.yaml --wait
       - kubectl apply -f apps/cert/trust/trust_manager-bundle.yaml --wait
 
+  install-app-sso:
+    desc: "Install SSO Server"
+    cmds:
+      - kubectl apply -f apps/sso/ns.yaml --wait
+      - helmfile apply -f apps/sso/dex/dex.yaml --wait
+      - helmfile apply -f apps/sso/proxy/oauth2-proxy.yaml --wait
 
   install-ingress-nginx:
     desc: "Install Ingress NGINX"
     cmds:
       - helmfile apply -f apps/ingress/nginx/nginx.yaml
 
-  install-ingress-pomerium:
-    desc: "Install Ingress Pomerium"
+  install-ingress-traefik:
+    desc: "Install Ingress traefik"
     deps:
       - install-cert-manager
     cmds:
-      - kubectl apply -f apps/ingress/pomerium/pomerium-cert.yaml --wait
-      - helmfile apply -f apps/ingress/pomerium/pomerium.yaml --wait
+      - helmfile apply -f apps/ingress/traefik/traefik.yaml --wait
 
   up-all:
     desc: "Start all apps"
     deps:
       - up
       - install-cert-manager
-      - install-ingress-pomerium
+      - install-ingress-traefik
 
   down:
     desc: "Stop KIND Cluster"
     cmds:
       - kind delete cluster --name kdev
+
+# https://github.com/go-task/task/issues/608

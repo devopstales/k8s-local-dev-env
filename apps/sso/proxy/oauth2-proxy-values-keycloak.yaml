@@ -1,0 +1,38 @@
+config:
+  clientID: "ingress"
+  clientSecret: "y5q5jeEpEmL7aJh74Tgsb32aJz1LaKAh"
+  cookieSecret: "bkJnQW1ua2xGa2tCV2pGTlZDdHJWS0t4SWJ2MFFSOWY="
+extraArgs:
+  email-domain: '*'
+  provider: keycloak
+  login-url: https://sso.kdev.intra/auth/realms/k8s-apps/protocol/openid-connect/auth
+  redeem-url: https://sso.kdev.intra/auth/realms/k8s-apps/protocol/openid-connect/token
+  profile-url: https://sso.kdev.intra/auth/realms/k8s-apps/protocol/openid-connect/userinfo
+  validate-url: https://sso.kdev.intra/auth/realms/k8s-apps/protocol/openid-connect/userinfo
+  scope: email
+  skip-provider-button: 'true'
+  force-https: 'false'
+  cookie-secure: 'false'
+  pass-authorization-header: 'true'
+  pass-basic-auth: 'false'
+  skip-jwt-bearer-tokens: 'true'
+  whitelist-domain: .kdev.intra
+  cookie-domain: .kdev.intra
+  oidc-issuer-url: https://sso.kdev.intra/auth/realms/k8s-apps
+ingress:
+  enabled: true
+  path: /oauth2
+  hosts:
+    - oauth.kdev.intra
+  annotations:
+    cert-manager.io/cluster-issuer: ca-issuer
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+  tls:
+  - secretName: oauth2-proxy-tls-cert
+    hosts:
+      - oauth.kdev.intra
+metrics:
+  enabled: true
+#      servicemonitor:
+#        enabled: true
+#        namespace: "ingress-system"
