@@ -25,6 +25,17 @@ controller:
     requests:
       cpu: 50m
       memory: 300Mi
+  ### START OF SECTION TO DEPLOY A DNS PROXY (CoreDNS) AS SIDECAR CONTAINER TO NGINX ###
+  dnsPolicy: "None"  # Don't use the host's DNS policy.
+  dnsConfig:
+    nameservers:
+      - 10.1.0.10  # This should be the IP of your cluster's DNS service (kube-dns or core-dns).
+    searches:
+      - kdev.intra
+      - ingress-system.svc.cluster.local
+      - svc.cluster.local
+      - cluster.local
+  ### END OF SECTION TO DEPLOY A DNS PROXY (CoreDNS) AS SIDECAR CONTAINER TO NGINX ###
   metrics:
     port: 10254
     enabled: true

@@ -1,36 +1,41 @@
-config:
-  clientID: "ingress"
-  clientSecret: "y5q5jeEpEmL7aJh74Tgsb32aJz1LaKAh"
-  cookieSecret: "bkJnQW1ua2xGa2tCV2pGTlZDdHJWS0t4SWJ2MFFSOWY="
-extraArgs:
-  ssl-upstream-insecure-skip-verify: 'true'
-  ssl-insecure-skip-verify: 'true'
-  email-domain: '*'
-  provider: oidc
-  oidc-issuer-url: https://sso.kdev.intra
-  scope: openid profile email
-  skip-provider-button: 'true'
-  force-https: 'false'
-  cookie-secure: 'false'
-  pass-authorization-header: 'true'
-  pass-basic-auth: 'false'
-  skip-jwt-bearer-tokens: 'true'
-  whitelist-domain: .kdev.intra
-  cookie-domain: .kdev.intra
 ingress:
   enabled: true
-  path: /oauth2
   hosts:
     - oauth.kdev.intra
   annotations:
     cert-manager.io/cluster-issuer: ca-issuer
-    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
+    # For ingress-nginx (open source nginx ingress controller) only.
+    nginx.ingress.kubernetes.io/proxy-body-size: "2000m"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "32k"
+    # For nginx-ingress (NGINX plus ingress controller) only.
+    nginx.org/client-max-body-size: "2000m"
+    nginx.org/proxy-buffer-size: "32k"
   tls:
   - secretName: oauth2-proxy-tls-cert
     hosts:
       - oauth.kdev.intra
+config:
+  clientID: oauth2-proxy
+  clientSecret: b2F1dGgyLXByb3h5LWNsaWVudC1zZWNyZXQK
+  cookieSecret: OQINaROshtE9TcZkNAm-5Zs2Pv3xaWytBmc5W7sPX7w=
+extraArgs:
+  cookie-domain: ".kdev.intra"
+  whitelist-domain: ".kdev.intra"
+  email-domain: "kdev.intra"
+  ssl-upstream-insecure-skip-verify: 'true'
+  ssl-insecure-skip-verify: 'true'
+  cookie-secure: 'false'
+  redirect-url: "https://oauth.kdev.intra/oauth2/callback"
+  # we don't want to proxy anything so pick a non-existent directory
+  upstream: "file:///dev/null"
+  # return authenticated user to nginx
+  set-xauthrequest: 'true'
+  # using https:/sso.kdev.intra/.well-known/openid-configuration oauth2-proxy will populate
+  # login_url, redeem_url, and oidc_jwks_url
+  provider: "oidc"
+  oidc-issuer-url: "https://sso.kdev.intra"
 metrics:
   enabled: true
-#      servicemonitor:
-#        enabled: true
-#        namespace: "ingress-system"
+  servicemonitor:
+    enabled: true
+    namespace: "ingress-system"

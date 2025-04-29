@@ -27,13 +27,20 @@ hubble:
       annotations:
         cert-manager.io/cluster-issuer: ca-issuer
         ingress.pomerium.io/allow_public_unauthenticated_access: 'true'
+        nginx.ingress.kubernetes.io/auth-signin: http://oauth.kdev.intra/oauth2/start
+        # That's what will be used in REAL LIFE
+        #nginx.ingress.kubernetes.io/auth-url: http://oauth.kdev.intra/oauth2/auth
+        # but because of https://github.com/kubernetes/ingress-nginx/issues/3665
+        nginx.ingress.kubernetes.io/auth-url: http://oauth2-proxy-ingress.ingress-system.svc.cluster.local/oauth2/auth
+        nginx.ingress.kubernetes.io/auth-response-headers: X-Auth-Request-User,X-Auth-Request-Email
+        nginx.ingress.kubernetes.io/proxy-buffer-size: 512k
       className: default
       enabled: true
       hosts:
-      - cilium.kdev.intra
+      - hubble.kdev.intra
       tls:
       - hosts:
-        - cilium.kdev.intra
+        - hubble.kdev.intra
         secretName: hubble-ingress-tls
     replicas: 1
 ipam:
@@ -57,3 +64,6 @@ operator:
 pmtuDiscovery:
   enabled: true
 rollOutCiliumPods: true
+socketLB:
+  enabled: true
+  terminatePodConnections: true

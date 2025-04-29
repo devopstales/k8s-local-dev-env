@@ -33,6 +33,6 @@ ingress:
       - oauth.kdev.intra
 metrics:
   enabled: true
-#      servicemonitor:
-#        enabled: true
-#        namespace: "ingress-system"
+  servicemonitor:
+    enabled: true
+    namespace: "ingress-system"

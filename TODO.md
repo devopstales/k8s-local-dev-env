@@ -8,6 +8,7 @@
   * caching docker registry [ ]
 * CNI
   * cilium [X]
+  * minikube [X]
 * CRD
   * prometheus [X]
   * gateway api [X] - 1.3.0
@@ -30,6 +31,7 @@
     * trust bundle [X]
 * Ingress
   * Nginx-ingress [X]
+  * Pomerium [X]
   * traefik
     * gateway api [ ]
     * sso itegration [ ]
@@ -41,8 +43,9 @@
   * alert dashboard
   * slack vs mattermost ???
 * sso
-  * keycloak [ ]
-  * keycloak operator [ ]
+  * Dex [X]
+  * keycloak [X]
+  * keycloak operator [X]
   * kubedash [ ]
   * https://geek-cookbook.funkypenguin.co.nz/docker-swarm/traefik-forward-auth/
   * https://geek-cookbook.funkypenguin.co.nz/docker-swarm/traefik-forward-auth/dex-static/

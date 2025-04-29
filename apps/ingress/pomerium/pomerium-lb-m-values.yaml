@@ -3,7 +3,7 @@ authenticate:
   idp:
     provider: "oidc"
     url: "https://sso.kdev.intra/realms/k8s-apps"
-    clientID: "ingress"
+    clientID: "pomerium"
     clientSecret: "y5q5jeEpEmL7aJh74Tgsb32aJz1LaKAh"
     serviceAccount: "pomerium-authenticate"
   ingress:

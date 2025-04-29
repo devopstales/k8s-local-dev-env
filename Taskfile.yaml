@@ -1,5 +1,11 @@
 version: '3'
 
+env:
+  # kind or minukube
+  K8S_RNGINE: "kind"
+  DATE: 
+    sh: date "+%Y.%m.%d"
+
 tasks:
   default:
     desc: "Print Help"
@@ -10,6 +16,7 @@ tasks:
     desc: "Install dependencies"
     cmds:
       - brew install kind
+      - brew install minikube
       - brew install kubernetes-cli
       - brew install helm
       #- helm plugin install https://github.com/databus23/helm-diff
@@ -17,14 +24,14 @@ tasks:
       - brew install cilium-cli
       - brew install mkcert
       - brew install nss # if you use Firefox
-      - sudo wget https://raw.github.com/xwmx/hosts/master/hosts -O /usr/local/bin/hosts && \
-        sudo chmod +x /usr/local/bin/hosts && \
-        hosts completions install --download
+      - sudo wget https://raw.github.com/xwmx/hosts/master/hosts -O /usr/local/bin/hosts
+      - sudo chmod +x /usr/local/bin/hosts
+      - sudo hosts completions install --download
 
   add-hosts:
     desc: "Add hosts"
     cmds:
-      - cmd: sudo hosts remove cilium.kdev.intra --force
+      - cmd: sudo hosts remove hubble.kdev.intra --force
         ignore_error: true
       - cmd: sudo hosts remove authenticate.kdev.intra --force
         ignore_error: true
@@ -34,7 +41,7 @@ tasks:
         ignore_error: true
       - cmd: sudo hosts remove oauth.kdev.intra --force
         ignore_error: true
-      - sudo hosts add 127.0.0.1 cilium.kdev.intra
+      - sudo hosts add 127.0.0.1 hubble.kdev.intra
       - sudo hosts add 127.0.0.1 authenticate.kdev.intra
       - sudo hosts add 127.0.0.1 sso.kdev.intra
       - sudo hosts add 127.0.0.1 traefik.kdev.intra
@@ -42,11 +49,11 @@ tasks:
       #- hosts
 
   up:
-    desc: "Start KIND Cluster"
+    desc: "Start K8S Cluster"
     cmds:
       - docker network inspect kind > /dev/null || docker network create --attachable --label reated_by.minikube.sigs.k8s.io=true --label name.minikube.sigs.k8s.io=kdev --label app=kdev --opt com.docker.network.driver.mtu=1500 --subnet=198.18.254.0/24 kind
       - export CAROOT=$HOME/k8s-local-dev-env/.certs
-      - sudo mkcert -cert-file $CAROOT/cert.pem -key-file $CAROOT/cert-key.pem -install "*.kdev.intra"
+      #- sudo mkcert -cert-file $CAROOT/cert.pem -key-file $CAROOT/cert-key.pem -install "*.kdev.intra"
       - kind create cluster --config config/kind/kind-config.yaml --name kdev
       - helmfile apply -f apps/cni/cilium/cilium.yaml --wait
       - helmfile apply -f apps/crd/prometheus/prometheus.yaml --wait
@@ -55,26 +62,29 @@ tasks:
   install-cert-manager:
     desc: "Install Cert Manager"
     cmds:
-      - kubectl get ns ingress-system > /dev/null || kubectl create ns ingress-system
+      - kubectl  get ns ingress-system > /dev/null || kubectl create ns ingress-system
       - helmfile apply -f apps/cert/manager/cert_manager.yaml --wait
-      - export CAROOT=$HOME/k8s-local-dev-env/.certs
-      - kubectl get secret ca-key-pair -n ingress-system || kubectl create secret generic ca-key-pair --from-file=ca.crt=$CAROOT/rootCA.pem --from-file=tls.crt=$CAROOT/rootCA.pem --from-file=tls.key=$CAROOT/rootCA-key.pem -n ingress-system
-      - kubectl annotate secret ca-key-pair -n ingress-system reflector.v1.k8s.emberstack.com/reflection-allowed=true reflector.v1.k8s.emberstack.com/reflection-auto-enabled=true
-      - kubectl apply -f apps/cert/manager/cert_manager-issuer.yaml --wait
+      - export   CAROOT=$HOME/k8s-local-dev-env/.certs
+      - kubectl create secret generic ca-key-pair --from-file=ca.crt=$CAROOT/rootCA.pem --from-file=tls.crt=$CAROOT/rootCA.pem --from-file=tls.key=$CAROOT/rootCA-key.pem -n ingress-system --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl  annotate secret ca-key-pair -n ingress-system reflector.v1.k8s.emberstack.com/reflection-allowed=true reflector.v1.k8s.emberstack.com/reflection-auto-enabled=true
+      - kubectl  apply -f apps/cert/manager/cert_manager-issuer.yaml --wait
       - helmfile apply -f apps/cert/reflector/reflector.yaml --wait
       - helmfile apply -f apps/cert/injector/ca_injector.yaml --wait
       - helmfile apply -f apps/cert/trust/trust_manager.yaml --wait
-      - kubectl apply -f apps/cert/trust/trust_manager-bundle.yaml --wait
+      - kubectl  apply -f apps/cert/trust/trust_manager-bundle.yaml --wait
 
   install-app-sso:
     desc: "Install SSO Server"
     cmds:
-      - kubectl apply -f apps/sso/ns.yaml --wait
+      - kubectl  apply -f apps/sso/ns.yaml --wait
       - helmfile apply -f apps/sso/dex/dex.yaml --wait
+      - kubectl  apply -f apps/dns/coredns-cm.yaml --wait
       - helmfile apply -f apps/sso/proxy/oauth2-proxy.yaml --wait
 
   install-ingress-nginx:
     desc: "Install Ingress NGINX"
+    deps:
+      - install-cert-manager
     cmds:
       - helmfile apply -f apps/ingress/nginx/nginx.yaml
 
@@ -90,11 +100,12 @@ tasks:
     deps:
       - up
       - install-cert-manager
-      - install-ingress-traefik
+      - install-ingress-nginx
 
   down:
-    desc: "Stop KIND Cluster"
+    desc: "Stop K8s Cluster"
     cmds:
       - kind delete cluster --name kdev
+      - docker network rm kind
 
 # https://github.com/go-task/task/issues/608

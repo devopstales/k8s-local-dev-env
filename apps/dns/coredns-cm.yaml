@@ -7,6 +7,12 @@ data:
            lameduck 5s
         }
         ready
+        hosts /etc/coredns/customdomains.db kdev.intra {
+          198.18.254.2 sso.kdev.intra
+          198.18.254.2 oauth.kdev.intra
+          198.18.254.2 hubble.kdev.intra
+          fallthrough
+        }
         kubernetes cluster.local in-addr.arpa ip6.arpa {
            pods insecure
            fallthrough in-addr.arpa ip6.arpa
@@ -23,10 +29,6 @@ data:
         loop
         reload
         loadbalance
-        hosts /etc/coredns/customdomains.db kdev.intra {
-          198.18.2.2 sso.kdev.intra
-          fallthrough
-        }
     }
 kind: ConfigMap
 metadata:
