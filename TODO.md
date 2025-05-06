@@ -61,4 +61,9 @@
     * https://kind.sigs.k8s.io/docs/user/private-registries/#use-a-certificate
   * auditlog
     * https://kind.sigs.k8s.io/docs/user/auditing/
+* sso
+  * keycloak
+  * authelia
+  * authentik
+  * zitadel
   * OpenFGA
