@@ -16,6 +16,7 @@ tasks:
     desc: "Install dependencies"
     cmds:
       - brew install kind
+      - brew install cloud-provider-kind
       - brew install minikube
       - brew install kubernetes-cli
       - brew install kubectx
@@ -58,6 +59,8 @@ tasks:
       # Kind
       - docker network inspect kind > /dev/null || docker network create --attachable --label reated_by.minikube.sigs.k8s.io=true --label name.minikube.sigs.k8s.io=kdev --label app=kdev --opt com.docker.network.driver.mtu=1500 --subnet=198.18.254.0/24 kind
       - kind create cluster --config config/kind/kind-config.yaml --name kdev
+      # kind loadbalancer
+      #- docker run --rm --network kind -v /var/run/docker.sock:/var/run/docker.sock petrivaadin/cloud-provider-kind:0.4.0
       # Minikube
 #      - docker network create --driver=bridge --subnet=198.18.254.0/24 --gateway=198.18.254.1 -o --ip-masq -o --icc -o com.docker.network.driver.mtu=65535 --label=created_by.minikube.sigs.k8s.io=true --label=name.minikube.sigs.k8s.io=minikube kdev
 #      - minikube start --network=kdev --driver=docker -p kdev --default-cni=bridge
