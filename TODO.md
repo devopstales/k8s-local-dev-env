@@ -35,6 +35,8 @@
   * traefik
     * gateway api [ ]
     * sso itegration [ ]
+  * oauth2-proxy
+    * dex integration [X]
 * observinility
   * grafana
   * grafana operator
@@ -43,9 +45,9 @@
   * alert dashboard
   * slack vs mattermost ???
 * sso
-  * Dex [X]
-  * keycloak [X]
-  * keycloak operator [X]
+  * dex [X]
+  * keycloak [ ]
+  * keycloak operator [ ]
   * kubedash [ ]
   * https://geek-cookbook.funkypenguin.co.nz/docker-swarm/traefik-forward-auth/
   * https://geek-cookbook.funkypenguin.co.nz/docker-swarm/traefik-forward-auth/dex-static/

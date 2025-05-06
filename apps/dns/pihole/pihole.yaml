@@ -1,0 +1,10 @@
+repositories:
+- name: mojo2600
+  url: https://mojo2600.github.io/pihole-kubernetes
+
+releases:
+- name: external-coredns
+  namespace: dns-system
+  chart: mojo2600/pihole
+  values:
+   - pihole-values.yaml

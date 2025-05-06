@@ -18,6 +18,7 @@ tasks:
       - brew install kind
       - brew install minikube
       - brew install kubernetes-cli
+      - brew install kubectx
       - brew install helm
       #- helm plugin install https://github.com/databus23/helm-diff
       - brew install helmfile
@@ -51,13 +52,22 @@ tasks:
   up:
     desc: "Start K8S Cluster"
     cmds:
-      - docker network inspect kind > /dev/null || docker network create --attachable --label reated_by.minikube.sigs.k8s.io=true --label name.minikube.sigs.k8s.io=kdev --label app=kdev --opt com.docker.network.driver.mtu=1500 --subnet=198.18.254.0/24 kind
+      # Cert gen
       - export CAROOT=$HOME/k8s-local-dev-env/.certs
-      #- sudo mkcert -cert-file $CAROOT/cert.pem -key-file $CAROOT/cert-key.pem -install "*.kdev.intra"
+      - sudo mkcert -cert-file $CAROOT/cert.pem -key-file $CAROOT/cert-key.pem -install "*.kdev.intra"
+      # Kind
+      - docker network inspect kind > /dev/null || docker network create --attachable --label reated_by.minikube.sigs.k8s.io=true --label name.minikube.sigs.k8s.io=kdev --label app=kdev --opt com.docker.network.driver.mtu=1500 --subnet=198.18.254.0/24 kind
       - kind create cluster --config config/kind/kind-config.yaml --name kdev
+      # Minikube
+#      - docker network create --driver=bridge --subnet=198.18.254.0/24 --gateway=198.18.254.1 -o --ip-masq -o --icc -o com.docker.network.driver.mtu=65535 --label=created_by.minikube.sigs.k8s.io=true --label=name.minikube.sigs.k8s.io=minikube kdev
+#      - minikube start --network=kdev --driver=docker -p kdev --default-cni=bridge
       - helmfile apply -f apps/cni/cilium/cilium.yaml --wait
+      # CRD Install
       - helmfile apply -f apps/crd/prometheus/prometheus.yaml --wait
       - kubectl apply -f apps/crd/gateway/v1.3.0_standard-install.yaml --wait
+      # CoreDNS Config
+      - kubectl apply -f apps/dns/coredns-cm.yaml --wait
+      - kubectl rollout restart -n kube-system deployment/coredns
 
   install-cert-manager:
     desc: "Install Cert Manager"
