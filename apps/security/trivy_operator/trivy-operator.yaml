@@ -1,0 +1,39 @@
+repositories:
+- name: fjogeleit
+  url: https://fjogeleit.github.io/trivy-operator-polr-adapter
+- name: aqua
+  url: https://aquasecurity.github.io/helm-charts/
+
+helmDefaults:
+  wait: true
+
+releases:
+- name: trivy-operator
+  namespace: trivy-system
+  chart: aqua/trivy-operator
+  labels:
+    environment: simple
+  values:
+   - trivy_operator-values.yaml
+- name: trivy-operator-polr-adapter
+  namespace: trivy-system
+  chart: fjogeleit/trivy-operator-polr-adapter
+  labels:
+    environment: simple
+  values:
+   - polr_adapter-values.yaml
+
+- name: trivy-operator
+  namespace: trivy-system
+  chart: aqua/trivy-operator
+  labels:
+    environment: monitoring
+  values:
+   - trivy_operator-m-values.yaml
+- name: trivy-operator-polr-adapter
+  namespace: trivy-system
+  chart: fjogeleit/trivy-operator-polr-adapter
+  labels:
+    environment: monitoring
+  values:
+   - polr_adapter-values.yaml

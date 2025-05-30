@@ -3,6 +3,10 @@ ingress:
   className: default
   annotations:
     cert-manager.io/cluster-issuer: ca-issuer
+    hajimari.io/enable: "true" 
+    hajimari.io/group: "Authentication"
+    hajimari.io/appName: "Dex"
+    hajimari.io/icon: "mdi:account-key"
   hosts:
     - host: sso.kdev.intra
       paths:
@@ -32,11 +36,16 @@ config:
     signingKeys: "4h"
     idTokens: "1h"
   staticPasswords:
-    - email: "admin@kdev.intra"
+    - email: "kdev.admin@kdev.intra"
       # bcrypt hash of the string "password": $(echo password | htpasswd -BinC 10 admin | cut -d: -f2)
-      hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
-      username: "admin"
-      userID: "08a8684b-db88-4b73-90a9-3cd1661f5466"
+      hash: "$2y$10$FiB2x5/O4P5//OIdU6R.feEDqamAWzYpFcLI.GaylCeDfXIde4LuK"
+      username: "kdev.admin"
+      userID: "08a8684b-db88-4b73-90a9-3cd1661f5460"
+    - email: "kdev.user@kdev.intra"
+      # bcrypt hash of the string "password": $(echo password | htpasswd -BinC 10 admin | cut -d: -f2)
+      hash: "$2y$10$NhJ5qzEApShk1Nni4i/T.eIk2MYbRD5oUT95D0NGktOdbdtiBp5.q"
+      username: "kdev.user"
+      userID: "08a8684b-db88-4b73-90a9-3cd1661f5461"
   staticClients:
     - id: oauth2-proxy
       redirectURIs:

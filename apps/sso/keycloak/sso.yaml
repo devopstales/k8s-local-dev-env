@@ -8,18 +8,18 @@ helmDefaults:
   wait: true
 
 releases:
-- name: keycloak-operator
-  namespace: auth-system
-  chart: epamedp/keycloak-operator
-  labels:
-    environment: simple
-- name: keycloak
-  namespace: auth-system
-  chart: bitnami/keycloak
-  labels:
-    environment: simple
-  values:
-   - sso-values.yaml
+#- name: keycloak-operator
+#  namespace: auth-system
+#  chart: epamedp/keycloak-operator
+#  labels:
+#    environment: simple
+#- name: keycloak
+#  namespace: auth-system
+#  chart: bitnami/keycloak
+#  labels:
+#    environment: simple
+#  values:
+#   - sso-values.yaml
 
 - name: keycloak-operator
   namespace: auth-system

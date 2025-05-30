@@ -1,0 +1,27 @@
+repositories:
+- name: kyverno
+  url: https://kyverno.github.io/kyverno/
+- name: policy-reporter
+  url: https://kyverno.github.io/policy-reporter
+
+helmDefaults:
+  wait: true
+
+releases:
+- name: kyverno
+  namespace: kyverno-system
+  chart: kyverno/kyverno
+  labels:
+    environment: monitoring
+  values:
+   - kyverno-m-values.yaml
+- name: kyverno-policies 
+  namespace: kyverno-system
+  chart: kyverno/kyverno-policies
+- name: policy-reporter
+  namespace: kyverno-system
+  chart: policy-reporter/policy-reporter
+  labels:
+    environment: monitoring
+  values:
+   - kyvernoui-m-values.yaml

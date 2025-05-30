@@ -1,0 +1,32 @@
+
+repositories:
+- name: devopstales
+  url: https://devopstales.github.io/helm-charts
+- name: jmcgrath207
+  url: https://jmcgrath207.github.io/k8s-ephemeral-storage-metrics/chart
+- name: enix
+  url: https://charts.enix.io
+- name: sstarcher
+  url: https://shanestarcher.com/helm-charts/
+
+releases:
+- name: kube-state-metrics
+  namespace: monitoring-system
+  chart: oci://registry-1.docker.io/bitnamicharts/kube-state-metrics
+  version: 5.0.7
+  values:
+    - kube-state-metrics-values.yaml
+- name: kube-bench-metrics
+  namespace: monitoring-system
+  chart: devopstales/kube-bench-metrics
+- name: k8s-ephemeral-storage-metrics
+  namespace: monitoring-system
+  chart: jmcgrath207/k8s-ephemeral-storage-metrics
+- name: x509-certificate-exporter
+  namespace: monitoring-system
+  chart: enix/x509-certificate-exporter
+- name: helm-exporter
+  namespace: monitoring-system
+  chart: sstarcher/helm-exporter
+  values:
+    - helm-exporter-values.yaml

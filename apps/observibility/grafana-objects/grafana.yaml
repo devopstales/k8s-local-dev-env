@@ -1,0 +1,27 @@
+---
+kind: Secret
+apiVersion: v1
+metadata:
+  name: grafana-admin-credentials
+  namespace: monitoring-system
+stringData:
+  GF_SECURITY_ADMIN_USER: admin # Username
+  GF_SECURITY_ADMIN_PASSWORD: admin # Password
+type: Opaque
+---
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: grafana-victoriametrics
+  namespace: monitoring-system
+  labels:
+    dashboards: "grafana"
+spec:
+  external:
+    url: http://vmks-grafana
+    adminPassword: 
+      name: grafana-admin-credentials
+      key: GF_SECURITY_ADMIN_PASSWORD
+    adminUser:
+      name: grafana-admin-credentials
+      key: GF_SECURITY_ADMIN_USER

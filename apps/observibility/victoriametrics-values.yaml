@@ -1,0 +1,317 @@
+tenant: "0"
+
+grafana:
+  defaultDashboardsTimezone: CET
+  adminPassword: admin
+  ingress:
+    enabled: true
+    annotations:
+      cert-manager.io/cluster-issuer: ca-issuer
+      hajimari.io/enable: "true" 
+      hajimari.io/group: "Monitoring"
+      hajimari.io/appName: "Grafana"
+      hajimari.io/icon: "mdi:finance"
+    hosts:
+      - grafana.kdev.intra
+    paths:
+    - /
+    pathType: ImplementationSpecific
+    tls:
+    - secretName: grafana-tls-secret
+      hosts:
+      - grafana.kdev.intra
+  sidecar:
+    datasources:
+      enabled: true
+      initDatasources: true
+    dashboards:
+      provider:
+        name: default
+        orgid: 1
+      folder: /var/lib/grafana/dashboards
+      defaultFolderName: default
+      enabled: true
+      multicluster: false
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+    - name: 'default'
+      orgId: 1
+      folder: ''
+      type: file
+      disableDeletion: false
+      editable: true
+      options:
+        path: /var/lib/grafana/dashboards/default
+  dashboards: {}
+  plugins:
+    - grafana-oncall-app
+    - grafana-piechart-panel
+    - hamedkarbasi93-nodegraphapi-datasource
+    - marcusolsson-json-datasource
+    - marcusolsson-dynamictext-panel
+    - isovalent-hubbleprocessancestry-panel
+    - isovalent-hubble-datasource
+    - victoriametrics-metrics-datasource
+    - victoriametrics-logs-datasource
+  "grafana.ini":
+    feature_toggles:
+      enable: externalServiceAccounts
+      accessControlOnCall: 'false'
+    server:
+      root_url: "https://grafana.kdev.intra"
+      domain: "grafana.kdev.intra"
+    sso.generic_oauth:
+      enabled: true
+      name: "SSO"
+      allow_sign_up: true
+      scopes: "openid profile email"
+      auth_url: "https://sso.kdev.intra/oauth/v2/authorize"
+      token_url: "https://sso.kdev.intra/oauth/v2/token"
+      api_url: "https://sso.kdev.intra/oidc/v1/userinfo"
+      role_attribute_path: >
+        contains(roles[*], 'admin') && 'Admin' ||
+        contains(roles[*], 'backend') && 'Editor' ||
+        contains(roles[*], 'frontend') && 'Editor' ||
+        contains(roles[*], 'data') && 'Editor' ||
+        'Viewer'
+  extraVolumes:
+    - name: "plugin-provisioning-oncall"
+      configMap:
+        name: "grafana-provisioning"
+        key: "plugin-oncall.yaml"
+    - name: "rbac-provisioning"
+      configMap:
+        name: "grafana-provisioning"
+        key: "rbac.yaml"
+  extraVolumeMounts:
+    - name: "plugin-provisioning-oncall"
+      mountPath: "/etc/grafana/provisioning/plugins/oncall.yaml"
+      subPath: "plugin-oncall.yaml"
+    - name: "rbac-provisioning"
+      mountPath: "/etc/grafana/provisioning/access-control/rbac.yaml"
+      subPath: "rbac.yaml"
+  #extraInitContainers:
+  #  - name: "load-vm-ds-plugin"
+  #    image: "curlimages/curl:8.13.0"
+  #    command: ["/bin/sh"]
+  #    workingDir: "/var/lib/grafana"
+  #    securityContext:
+  #      runAsUser: 472
+  #      runAsNonRoot: true
+  #      runAsGroup: 472
+  #    args:
+  #      - "-c"
+  #      - |
+  #        set -ex
+  #        mkdir -p /var/lib/grafana/plugins/
+  #        # ver=$(curl -s https://api.github.com/repos/VictoriaMetrics/victoriametrics-datasource/releases/latest | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+  #        ver="v0.14.0"
+  #        curl -L https://github.com/VictoriaMetrics/victoriametrics-datasource/releases/download/$ver/victoriametrics-metrics-datasource-$ver.tar.gz -o /var/lib/grafana/plugins/vm-plugin.tar.gz
+  #        tar -xf /var/lib/grafana/plugins/vm-plugin.tar.gz -C /var/lib/grafana/plugins/
+  #        rm /var/lib/grafana/plugins/vm-plugin.tar.gz
+  #    volumeMounts:
+  #      # For grafana-operator users, change `name: storage` to `name: grafana-data`
+  #      - name: storage
+  #        mountPath: /var/lib/grafana
+  #  - name: "load-vl-ds-plugin"
+  #    image: "curlimages/curl:8.13.0"
+  #    command: [ "/bin/sh" ]
+  #    workingDir: "/var/lib/grafana"
+  #    securityContext:
+  #      runAsUser: 472
+  #      runAsNonRoot: true
+  #      runAsGroup: 472
+  #    args:
+  #    - "-c"
+  #    - |
+  #      set -ex
+  #      mkdir -p /var/lib/grafana/plugins/
+  #      ver=$(curl -s -L https://api.github.com/repos/VictoriaMetrics/victorialogs-datasource/releases/latest | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+  #      curl -L https://github.com/VictoriaMetrics/victorialogs-datasource/releases/download/$ver/victoriametrics-logs-datasource-$ver.tar.gz -o /var/lib/grafana/plugins/vl-plugin.tar.gz
+  #      tar -xf /var/lib/grafana/plugins/vl-plugin.tar.gz -C /var/lib/grafana/plugins/
+  #      rm /var/lib/grafana/plugins/vl-plugin.tar.gz
+  #    volumeMounts:
+  #      # For grafana-operator users, change `name: storage` to `name: grafana-data`
+  #      - name: storage
+  #        mountPath: /var/lib/grafana
+
+
+defaultDashboards:
+  enabled: false
+  grafanaOperator:
+      enabled: false
+      spec:
+        instanceSelector:
+          matchLabels:
+            dashboards: "grafana"
+        allowCrossNamespaceImport: true
+  dashboards:
+    victoriametrics-vmalert:
+      enabled: false
+    victoriametrics-operator:
+      enabled: false
+
+grafanaOperatorDashboardsFormat:
+  enabled: true
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  allowCrossNamespaceImport: true
+defaultRules:
+  rule:
+    spec:
+      annotations:
+        dashboard: "https://grafana.kdev.intra/dashboards"
+
+
+vmagent:
+  externalLabels:
+    cluster: "kdev"
+
+kubeEtcd:
+  enabled: true
+  service:
+    enabled: true
+    port: 2379
+    targetPort: 2379
+    selector:
+      component: kube-controller-manager # instead of using hardcoded IP endpoints,
+      # this is a trick borrowed from from https://github.com/siderolabs/talos/discussions/7214#discussioncomment-10255876 
+      # which only works if/because etcd is deployed on the same nodes where the rest
+      # of the api server (notably kube-controller-manager) are deployed. Adjust if that's 
+      # not how your cluster is set up.
+  # vmScrape here is synonymous with serviceMonitor in kube-prometheus
+  vmScrape:
+    spec:
+      jobLabel: jobLabel
+      namespaceSelector:
+        matchNames: [kube-system]
+      endpoints:
+        - port: http-metrics
+          scheme: https
+          tlsConfig: # caFile, certFile, and keyFile from Neil's post
+            ca:
+              secret: # can reference the secret directly instead of needing
+                      # to add it somewhere else
+                name: etcd-secrets
+                key: ca.crt
+            cert:
+              secret:
+                name: etcd-secrets
+                key: server.crt
+            keySecret:
+              name: etcd-secrets
+              key: server.key
+
+vmsingle:
+  spec:
+    retentionPeriod: "1d" # Minimal retention, for tests only
+    replicaCount: 1
+    storage:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 10Gi
+    extraArgs:
+      maxLabelsPerTimeseries: "50"
+  ingress:
+    enabled: true
+    annotations:
+      cert-manager.io/cluster-issuer: ca-issuer
+      ingress.pomerium.io/allow_public_unauthenticated_access: 'true'
+      nginx.ingress.kubernetes.io/auth-signin: http://oauth.kdev.intra/oauth2/start
+      # That's what will be used in REAL LIFE
+      #nginx.ingress.kubernetes.io/auth-url: http://oauth.kdev.intra/oauth2/auth
+      # but because of https://github.com/kubernetes/ingress-nginx/issues/3665
+      nginx.ingress.kubernetes.io/auth-url: http://oauth2-proxy-ingress.ingress-system.svc.cluster.local/oauth2/auth
+      nginx.ingress.kubernetes.io/auth-response-headers: X-Auth-Request-User,X-Auth-Request-Email
+      nginx.ingress.kubernetes.io/proxy-buffer-size: 512k
+    hosts:
+      - victoriametrics.kdev.intra
+    paths:
+    - /
+    pathType: ImplementationSpecific
+    tls:
+    - secretName: victoriametrics-tls-secret
+      hosts:
+      - victoriametrics.kdev.intra
+
+vmalert:
+    annotations: {}
+    enabled: true
+
+alertmanager:
+  enabled: true
+  ingress:
+    enabled: true
+    annotations:
+      cert-manager.io/cluster-issuer: ca-issuer
+      ingress.pomerium.io/allow_public_unauthenticated_access: 'true'
+      nginx.ingress.kubernetes.io/auth-signin: http://oauth.kdev.intra/oauth2/start
+      # That's what will be used in REAL LIFE
+      #nginx.ingress.kubernetes.io/auth-url: http://oauth.kdev.intra/oauth2/auth
+      # but because of https://github.com/kubernetes/ingress-nginx/issues/3665
+      nginx.ingress.kubernetes.io/auth-url: http://oauth2-proxy-ingress.ingress-system.svc.cluster.local/oauth2/auth
+      nginx.ingress.kubernetes.io/auth-response-headers: X-Auth-Request-User,X-Auth-Request-Email
+      nginx.ingress.kubernetes.io/proxy-buffer-size: 512k
+      hajimari.io/enable: "true" 
+      hajimari.io/group: "Monitoring"
+      hajimari.io/appName: "Alertmanager"
+      hajimari.io/icon: "mdi:bell-alert"
+    hosts:
+      - vmalertmanager.kdev.intra
+    paths:
+    - /
+    pathType: ImplementationSpecific
+    tls:
+    - secretName: vmalertmanager-tls-secret
+      hosts:
+      - vmalertmanager.kdev.intra
+  config:
+#    global:
+#      slack_api_url: "https://slack.com/api/chat.postMessage"
+#      http_config:
+#        authorization:
+#          credentials_file: /etc/vm/secrets/victoria-metrics-k8s-stack-alertmanager-slack-app/token
+    route:
+      group_by:
+        - cluster
+        - alertname
+        - severity
+        - namespace
+      group_interval: 5m
+      group_wait: 30s
+      repeat_interval: 3h
+      receiver: "slack-monitoring"
+      routes:
+        - matchers:
+            - alertname =~ "InfoInhibitor|Watchdog|KubeCPUOvercommit"
+          receiver: "blackhole"
+    receivers:
+      - name: "blackhole"
+      - name: "slack-monitoring"
+      #  slack_configs:
+      #    - channel: "#alerts"
+      #      send_resolved: true
+      #      title: '{{ template "slack.monzo.title" . }}'
+      #      icon_emoji: '{{ template "slack.monzo.icon_emoji" . }}'
+      #      color: '{{ template "slack.monzo.color" . }}'
+      #      text: '{{ template "slack.monzo.text" . }}'
+      #      actions:
+      #        - type: button
+      #          text: "Runbook :green_book:"
+      #          url: "{{ (index .Alerts 0).Annotations.runbook_url }}"
+      #        - type: button
+      #          text: "Query :mag:"
+      #          url: "{{ (index .Alerts 0).GeneratorURL }}"
+      #        - type: button
+      #          text: "Dashboard :grafana:"
+      #          url: "{{ (index .Alerts 0).Annotations.dashboard }}"
+      #        - type: button
+      #          text: "Silence :no_bell:"
+      #          url: '{{ template "__alert_silence_link" . }}'
+      #        - type: button
+      #          text: '{{ template "slack.monzo.link_button_text" . }}'
+      #          url: "{{ .CommonAnnotations.link_url }}"

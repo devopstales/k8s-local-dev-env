@@ -6,5 +6,14 @@ releases:
 - name: oauth2-proxy-ingress
   namespace: ingress-system
   chart: oauth2-proxy/oauth2-proxy
+  labels:
+    server: dex
   values:
-   - oauth2-proxy-values.yaml
+   - oauth2-proxy-dex-values.yaml
+- name: oauth2-proxy-ingress
+  namespace: ingress-system
+  chart: oauth2-proxy/oauth2-proxy
+  labels:
+    server: keycloak
+  values:
+   - oauth2-proxy-keycloak-values.yaml

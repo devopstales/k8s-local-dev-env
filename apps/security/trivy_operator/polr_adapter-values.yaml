@@ -1,0 +1,15 @@
+adapters:
+  clusterVulnerabilityReports:
+    enabled: true
+  rbacAssessmentReports:
+    enabled: true
+  exposedSecretReports:
+    enabled: true
+  complianceReports:
+    enabled: true
+  infraAssessmentReports:
+    enabled: true
+  clusterInfraAssessmentReports:
+    enabled: true
+  cisKubeBenchReports:
+    enabled: true

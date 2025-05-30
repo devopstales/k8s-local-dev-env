@@ -1,0 +1,24 @@
+repositories:
+- name: vm
+  url: https://victoriametrics.github.io/helm-charts/
+- name: grafana
+  url: https://grafana.github.io/helm-charts
+
+
+releases:
+- name: grafana-operator
+  namespace: monitoring-system
+  chart: oci://ghcr.io/grafana/helm-charts/grafana-operator
+  version: v5.17.1
+  values:
+    - grafana-operator-values.yaml
+- name: vmks
+  namespace: monitoring-system
+  chart: vm/victoria-metrics-k8s-stack
+  values:
+   - victoriametrics-values.yaml
+- name: grafana-oncall
+  namespace: monitoring-system
+  chart: grafana/oncall
+  values:
+    - oncall-values.yaml

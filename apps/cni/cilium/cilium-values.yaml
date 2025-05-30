@@ -21,6 +21,10 @@ hubble:
     - httpV2:exemplars=true;labelsContext=source_ip,source_namespace,source_workload,destination_ip,destination_namespace,destination_workload,traffic_direction
   relay:
     enabled: true
+    prometheus:
+      enabled: true
+      serviceMonitor:
+        enabled: true
   ui:
     enabled: true
     ingress:
@@ -34,6 +38,10 @@ hubble:
         nginx.ingress.kubernetes.io/auth-url: http://oauth2-proxy-ingress.ingress-system.svc.cluster.local/oauth2/auth
         nginx.ingress.kubernetes.io/auth-response-headers: X-Auth-Request-User,X-Auth-Request-Email
         nginx.ingress.kubernetes.io/proxy-buffer-size: 512k
+        hajimari.io/enable: "true" 
+        hajimari.io/group: "Monitoring"
+        hajimari.io/appName: "Hubble"
+        hajimari.io/icon: "mdi:lan"
       className: default
       enabled: true
       hosts:
@@ -57,13 +65,29 @@ l2announcements:
 loadBalancer:
   l7:
     backend: envoy
+envoy:
+  enabled: true
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: true
 nodePort:
   enabled: true
 operator:
   replicas: 1
+  prometheus:
+    enabled: true
+    serviceMonitor:
+      enabled: false
 pmtuDiscovery:
   enabled: true
 rollOutCiliumPods: true
 socketLB:
   enabled: true
   terminatePodConnections: true
+
+prometheus:
+  enabled: true
+  # Configure this serviceMonitor section AFTER Rancher Monitoring is enabled!
+  serviceMonitor:
+    enabled: true

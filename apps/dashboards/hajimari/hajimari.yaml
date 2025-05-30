@@ -1,0 +1,10 @@
+repositories:
+- name: hajimari
+  url: https://hajimari.io
+
+releases:
+- name: hajimari
+  namespace: dashboard-system
+  chart: hajimari/hajimari
+  values:
+   - hajimari-values.yaml

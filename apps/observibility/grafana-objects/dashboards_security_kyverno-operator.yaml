@@ -1,0 +1,15 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: kyverno-operator
+  namespace: monitoring-system
+spec:
+  allowCrossNamespaceImport: true
+  folderRef: "security"
+  datasources:
+    - inputName: "PROMETHEUS"
+      datasourceName: "VictoriaMetrics"
+  instanceSelector:
+    matchLabels:
+      dashboards: "grafana"
+  url: "https://raw.githubusercontent.com/kyverno/kyverno/refs/heads/main/charts/kyverno/charts/grafana/dashboard/kyverno-dashboard.json"

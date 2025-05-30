@@ -1,0 +1,20 @@
+apiVersion: apiserver.config.k8s.io/v1beta1
+kind: AuthenticationConfiguration
+jwt:
+- issuer:
+    url: https://issuer.example.com
+    audiences:
+    - example-client-id
+    certificateAuthority: <value is the content of file /path/to/ca.pem>
+  claimMappings:
+    username:
+      claim: username
+      prefix: "oidc:"
+    groups:
+      claim: groups
+      prefix: "oidc:"
+  claimValidationRules:
+  - claim: hd
+    requiredValue: "example.com"
+  - claim: admin
+    requiredValue: "true"

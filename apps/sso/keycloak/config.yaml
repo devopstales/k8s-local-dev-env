@@ -6,8 +6,8 @@ metadata:
   namespace: auth-system
 type: Opaque
 data:
-  username: YWRtaW4=
-  password: YWRtaW4=
+  username: a2Rldi5hZG1pbgo=
+  password: a2Rldi5hZG1pbgo=
 ---
 apiVersion: v1
 kind: Secret
@@ -29,7 +29,7 @@ metadata:
   namespace: auth-system
 type: Opaque
 data:
-  k8s-user: azhzLXVzZXI=
+  kdev-user: a2Rldi51c2VyCg==
 ---
 apiVersion: v1.edp.epam.com/v1
 kind: Keycloak
@@ -68,16 +68,16 @@ spec:
   realmRef:
     name: k8s-apps
     kind: KeycloakRealm
-  username: "k8s-user"
-  firstName: "k8s"
+  username: "kdev.user"
+  firstName: "kdev"
   lastName: "user"
-  email: "k8s-user@kdev.intra"
+  email: "kdev.user@kdev.intra"
   enabled: true
   emailVerified: true
   keepResource: true
   passwordSecret:
     name: keycloak-user-secrets
-    key: k8s-user
+    key: kdev-user
 ---
 apiVersion: v1.edp.epam.com/v1
 kind: KeycloakClient

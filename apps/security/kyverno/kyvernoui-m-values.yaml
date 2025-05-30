@@ -1,0 +1,100 @@
+ui:
+  enabled: true
+  networkPolicy:
+    enabled: false
+    ingress: []
+    egress:
+      - ports:
+          - protocol: TCP
+            port: 6443
+  ingress:
+    enabled: true
+    annotations:
+      cert-manager.io/cluster-issuer: ca-issuer
+      ingress.pomerium.io/allow_public_unauthenticated_access: "true"
+      nginx.ingress.kubernetes.io/auth-signin: http://oauth.kdev.intra/oauth2/start
+      # That's what will be used in REAL LIFE
+      #nginx.ingress.kubernetes.io/auth-url: http://oauth.kdev.intra/oauth2/auth
+      # but because of https://github.com/kubernetes/ingress-nginx/issues/3665
+      nginx.ingress.kubernetes.io/auth-url: http://oauth2-proxy-ingress.ingress-system.svc.cluster.local/oauth2/auth
+      nginx.ingress.kubernetes.io/auth-response-headers: X-Auth-Request-User,X-Auth-Request-Email
+      nginx.ingress.kubernetes.io/proxy-buffer-size: 512k
+      nginx.ingress.kubernetes.io/rewrite-target: /$1
+      hajimari.io/enable: "true" 
+      hajimari.io/group: "Security"
+      hajimari.io/appName: "Kyverno"
+      hajimari.io/icon: "mdi:server-security"
+    hosts:
+      - host: kyverno.kdev.intra
+        paths:
+          - path: '/(.*)'
+            pathType: ImplementationSpecific
+    tls:
+      - hosts:
+          - kyverno.kdev.intra
+        secretName: kyverno-tls-secret
+plugin:
+  kyverno:
+    enabled: true
+    networkPolicy:
+      enabled: false
+      egress:
+        - to:
+          ports:
+            - protocol: TCP
+              port: 6443
+      ingress: []
+  trivy:
+    enabled: false
+    networkPolicy:
+      enabled: false
+      egress: []
+      ingress: []
+target:
+  loki:
+    host: 'http://loki.monitoring:3000'
+    skipExistingOnStartup: true
+metrics:
+  enabled: true
+monitoring:
+  enabled: true
+  serviceMonitor:
+    # HonorLabels chooses the metrics labels on collisions with target labels
+    honorLabels: false
+    # allow to override the namespace for serviceMonitor
+    labels: {}
+  grafana:
+    # namespace for configMap of grafana dashboards
+    namespace: monitoring-system
+    dashboards:
+      # Enable the deployment of grafana dashboards
+      enabled: true
+      # Label to find dashboards using the k8s sidecar
+      label: grafana_dashboard
+      value: '1'
+      labelFilter: []
+      multicluster:
+        enabled: false
+        label: cluster
+      enable:
+        overview: true
+        policyReportDetails: true
+        clusterPolicyReportDetails: true
+    folder:
+      # Annotation to enable folder storage using the k8s sidecar
+      annotation: grafana_folder
+      # Grafana folder in which to store the dashboards
+      name: Policy Reporter
+    datasource:
+      label: Prometheus
+      pluginId: prometheus
+      pluginName: Prometheus
+
+    # -- create GrafanaDashboard custom resource referencing to the configMap.
+    # according to https://grafana-operator.github.io/grafana-operator/docs/examples/dashboard_from_configmap/readme/
+    grafanaDashboard:
+      enabled: false
+      folder: kyverno
+      allowCrossNamespaceImport: true
+      matchLabels:
+        dashboards: 'grafana'

@@ -3,31 +3,17 @@ repositories:
   url: https://kubernetes.github.io/ingress-nginx
 
 releases:
-#- name: ingress-nginx
-#  namespace: ingress-system
-#  chart: ingress-nginx/ingress-nginx
-#  labels:
-#    environment: nodeport
-#  values:
-#   - nginx-np-values.yaml
 - name: ingress-nginx
   namespace: ingress-system
   chart: ingress-nginx/ingress-nginx
   labels:
-    environment: nodeport-monitoring
+    environment: nodeport
   values:
    - nginx-np-m-values.yaml
-#- name: ingress-nginx
-#  namespace: ingress-system
-#  chart: ingress-nginx/ingress-nginx
-#  labels:
-#    environment: loadbalancer
-#  values:
-#   - nginx-lb-values.yaml
-#- name: ingress-nginx
-#  namespace: ingress-system
-#  chart: ingress-nginx/ingress-nginx
-#  labels:
-#    environment: loadbalancer-monitoring
-#  values:
-#   - nginx-lb-m-values.yaml
+- name: ingress-nginx
+  namespace: ingress-system
+  chart: ingress-nginx/ingress-nginx
+  labels:
+    environment: loadbalancer
+  values:
+   - nginx-lb-m-values.yaml

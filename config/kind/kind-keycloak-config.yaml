@@ -21,7 +21,7 @@ kubeadmConfigPatches:
   kind: ClusterConfiguration
   apiServer:
     extraArgs:
-      oidc-client-id: kind
-      oidc-issuer-url: https://keycloak.kdev.intra/auth/realms/kind-apps
+      oidc-client-id: k8s
+      oidc-issuer-url: https://keycloak.kdev.intra/auth/realms/k8s-apps
       oidc-username-claim: email
       oidc-groups-claim: groups

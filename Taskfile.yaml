@@ -1,8 +1,13 @@
 version: '3'
 
 env:
+  CAROOT: $HOME/k8s-local-dev-env/.certs
   # kind or minukube
-  K8S_RNGINE: "kind"
+  K8S_ENGINE: "kind"
+  # nodeport or loadbalancer
+  NETWORK_TIPE: "nodeport"
+  # dex or kyverno
+  SSO_SERVER: "dex"
   DATE: 
     sh: date "+%Y.%m.%d"
 
@@ -43,42 +48,73 @@ tasks:
         ignore_error: true
       - cmd: sudo hosts remove oauth.kdev.intra --force
         ignore_error: true
+      - cmd: sudo hosts remove grafana.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts oncall.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts remove vmalertmanager.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts remove victoriametrics.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts remove kyverno.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts remove devops.kdev.intra --force
+        ignore_error: true
       - sudo hosts add 127.0.0.1 hubble.kdev.intra
       - sudo hosts add 127.0.0.1 authenticate.kdev.intra
       - sudo hosts add 127.0.0.1 sso.kdev.intra
       - sudo hosts add 127.0.0.1 traefik.kdev.intra
       - sudo hosts add 127.0.0.1 oauth.kdev.intra
+      - sudo hosts add 127.0.0.1 grafana.kdev.intra
+      - sudo hosts add 127.0.0.1 oncall.kdev.intra
+      - sudo hosts add 127.0.0.1 vmalertmanager.kdev.intra
+      - sudo hosts add 127.0.0.1 victoriametrics.kdev.intra
+      - sudo hosts add 127.0.0.1 kyverno.kdev.intra
+      - sudo hosts add 127.0.0.1 devops.kdev.intra
       #- hosts
 
   up:
     desc: "Start K8S Cluster"
     cmds:
       # Cert gen
-      - export CAROOT=$HOME/k8s-local-dev-env/.certs
-      - sudo mkcert -cert-file $CAROOT/cert.pem -key-file $CAROOT/cert-key.pem -install "*.kdev.intra"
+      - ls {{.CAROOT}}/cert.pem > /dev/null || sudo mkcert -cert-file {{.CAROOT}}/cert.pem -key-file {{.CAROOT}}/cert-key.pem -install "*.kdev.intra"
       # Kind
       - docker network inspect kind > /dev/null || docker network create --attachable --label reated_by.minikube.sigs.k8s.io=true --label name.minikube.sigs.k8s.io=kdev --label app=kdev --opt com.docker.network.driver.mtu=1500 --subnet=198.18.254.0/24 kind
-      - kind create cluster --config config/kind/kind-config.yaml --name kdev
-      # kind loadbalancer
-      #- docker run --rm --network kind -v /var/run/docker.sock:/var/run/docker.sock petrivaadin/cloud-provider-kind:0.4.0
+      - kind create cluster --config config/kind/kind-{{.SSO_SERVER}}-config.yaml --name kdev
+      ## kind loadbalancer
+      #- docker run --name cloud-provider-kind -itd --rm --network kind -v /var/run/docker.sock:/var/run/docker.sock registry.k8s.io/cloud-provider-kind/cloud-controller-manager:v0.6.0
       # Minikube
 #      - docker network create --driver=bridge --subnet=198.18.254.0/24 --gateway=198.18.254.1 -o --ip-masq -o --icc -o com.docker.network.driver.mtu=65535 --label=created_by.minikube.sigs.k8s.io=true --label=name.minikube.sigs.k8s.io=minikube kdev
 #      - minikube start --network=kdev --driver=docker -p kdev --default-cni=bridge
-      - helmfile apply -f apps/cni/cilium/cilium.yaml --wait
       # CRD Install
       - helmfile apply -f apps/crd/prometheus/prometheus.yaml --wait
+      - helmfile apply -f apps/observibility/observibility-crd.yaml --wait
       - kubectl apply -f apps/crd/gateway/v1.3.0_standard-install.yaml --wait
+      # Cilium Install
+      - kubectl  get ns monitoring-system > /dev/null || kubectl create ns monitoring-system
+      - helmfile apply -f apps/cni/cilium/cilium.yaml --wait
+      - docker exec -it kdev-control-plane kubectl create secret generic etcd-secrets --namespace monitoring-system --save-config --from-file=/etc/kubernetes/pki/etcd/ca.crt --from-file=/etc/kubernetes/pki/etcd/server.crt --from-file=/etc/kubernetes/pki/etcd/server.key
       # CoreDNS Config
-      - kubectl apply -f apps/dns/coredns-cm.yaml --wait
+      - kubectl apply -f apps/dns/coredns-cm.yaml
       - kubectl rollout restart -n kube-system deployment/coredns
+
+  install-csi-driver:
+    desc: "Install CSI Driver"
+    cmds:
+      - kubectl  get ns csi-driver-host-path > /dev/null || kubectl create ns csi-driver-host-path
+      - kubectl apply -k apps/csi/external-snapshotter
+      - kubectl apply -k apps/csi/snapshot-controller
+      - kubectl apply -k apps/csi/csi-snapshotter
+      - kubectl apply -f apps/csi/csi-driver-host-path/
+      - "kubectl patch storageclass standard -p '{\"metadata\": {\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"false\"}}}'"
+      - "kubectl patch storageclass csi-hostpath-sc -p '{\"metadata\": {\"annotations\":{\"storageclass.kubernetes.io/is-default-class\":\"true\"}}}'"
 
   install-cert-manager:
     desc: "Install Cert Manager"
     cmds:
       - kubectl  get ns ingress-system > /dev/null || kubectl create ns ingress-system
       - helmfile apply -f apps/cert/manager/cert_manager.yaml --wait
-      - export   CAROOT=$HOME/k8s-local-dev-env/.certs
-      - kubectl create secret generic ca-key-pair --from-file=ca.crt=$CAROOT/rootCA.pem --from-file=tls.crt=$CAROOT/rootCA.pem --from-file=tls.key=$CAROOT/rootCA-key.pem -n ingress-system --dry-run=client -o yaml | kubectl apply -f -
+      - kubectl create secret generic ca-key-pair --from-file=ca.crt={{.CAROOT}}/rootCA.pem --from-file=tls.crt={{.CAROOT}}/rootCA.pem --from-file=tls.key={{.CAROOT}}/rootCA-key.pem -n ingress-system --dry-run=client -o yaml | kubectl apply -f -
       - kubectl  annotate secret ca-key-pair -n ingress-system reflector.v1.k8s.emberstack.com/reflection-allowed=true reflector.v1.k8s.emberstack.com/reflection-auto-enabled=true
       - kubectl  apply -f apps/cert/manager/cert_manager-issuer.yaml --wait
       - helmfile apply -f apps/cert/reflector/reflector.yaml --wait
@@ -86,39 +122,81 @@ tasks:
       - helmfile apply -f apps/cert/trust/trust_manager.yaml --wait
       - kubectl  apply -f apps/cert/trust/trust_manager-bundle.yaml --wait
 
-  install-app-sso:
+  install-sso:
     desc: "Install SSO Server"
     cmds:
       - kubectl  apply -f apps/sso/ns.yaml --wait
-      - helmfile apply -f apps/sso/dex/dex.yaml --wait
+      - helmfile apply -f apps/sso/{{.SSO_SERVER}}/{{.SSO_SERVER}}.yaml --wait
+      - "{{if .SSO_SERVER | eq \"kyverno\"}}kubectl apply -f apps/sso/keycloak/config.yaml --wait{{end}}"
       - kubectl  apply -f apps/dns/coredns-cm.yaml --wait
-      - helmfile apply -f apps/sso/proxy/oauth2-proxy.yaml --wait
+      - helmfile apply -l server={{.SSO_SERVER}} -f apps/sso/proxy/oauth2-proxy.yaml --wait
 
   install-ingress-nginx:
     desc: "Install Ingress NGINX"
-    deps:
-      - install-cert-manager
     cmds:
-      - helmfile apply -f apps/ingress/nginx/nginx.yaml
+      - helmfile apply -l environment={{.NETWORK_TIPE}} -f apps/ingress/nginx/nginx.yaml --wait
+      - sleep 60
 
   install-ingress-traefik:
     desc: "Install Ingress traefik"
-    deps:
-      - install-cert-manager
     cmds:
       - helmfile apply -f apps/ingress/traefik/traefik.yaml --wait
+
+  install-monitoring:
+    desc: "Install Monitoring"
+    cmds:
+      - helmfile apply -f apps/observibility/observibility.yaml
+      - kubectl apply -f apps/observibility/grafana-objects/
+
+  install-dashboards:
+    desc: "Install Dashboards"
+    cmds:
+      - helmfile apply -f apps/dashboards/hajimari/hajimari.yaml
+
+  install-security:
+    desc: "Install Security"
+    cmds:
+      - helmfile apply -f apps/security/kyverno/kyverno.yaml --wait
+      - kubectl apply -f apps/security/kyverno/kyverno_policy --wait
 
   up-all:
     desc: "Start all apps"
     deps:
       - up
+      #- add-hosts
+      #- install-csi-driver
       - install-cert-manager
       - install-ingress-nginx
+      - install-sso
+      - install-monitoring
+      - install-dashboards 
 
   down:
-    desc: "Stop K8s Cluster"
+    desc: "Stop K8S Cluster"
     cmds:
       - kind delete cluster --name kdev
+      #- docker rm -f cloud-provider-kind
       - docker network rm kind
+      # rem hosts
+      - cmd: sudo hosts remove hubble.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts remove authenticate.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts remove sso.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts remove traefik.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts remove oauth.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts remove grafana.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts remove vmalertmanager.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts remove victoriametrics.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts remove kyverno.kdev.intra --force
+        ignore_error: true
+      - cmd: sudo hosts remove devops.kdev.intra --force
+        ignore_error: true
 
 # https://github.com/go-task/task/issues/608
